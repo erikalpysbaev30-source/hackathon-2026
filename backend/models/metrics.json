@@ -1,0 +1,21 @@
+{
+  "samples": 94492,
+  "positives_rate": 0.1002,
+  "roc_auc": 0.847,
+  "pr_auc": 0.393,
+  "lift_top10": 4.48,
+  "recall_top10": 0.448,
+  "health_mae": 0.012,
+  "horizon_min": 240,
+  "feature_signal": {
+    "vib_ratio": 0.597,
+    "temp_ratio": 0.637,
+    "cur_ratio": 0.546,
+    "vib_ratio_15": 0.633,
+    "temp_ratio_15": 0.659,
+    "vib_slope": 0.155,
+    "temp_slope": 0.21,
+    "cycle_drift": 0.619,
+    "age_ratio": 0.573
+  }
+}

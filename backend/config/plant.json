@@ -1,0 +1,403 @@
+{
+  "name": "Allur Kostanay — line 1 (demo layout)",
+  "tick_seconds": 10,
+  "shift_hours": 8,
+  "plan_per_shift": 80,
+  "models": [
+    {
+      "id": "sedan",
+      "mix": 0.4
+    },
+    {
+      "id": "crossover",
+      "mix": 0.45
+    },
+    {
+      "id": "pickup",
+      "mix": 0.15
+    }
+  ],
+  "shops": [
+    {
+      "id": "welding",
+      "x": 30,
+      "y": 60,
+      "w": 310,
+      "h": 180
+    },
+    {
+      "id": "paint",
+      "x": 370,
+      "y": 60,
+      "w": 250,
+      "h": 180
+    },
+    {
+      "id": "assembly",
+      "x": 650,
+      "y": 60,
+      "w": 320,
+      "h": 180
+    },
+    {
+      "id": "qc",
+      "x": 650,
+      "y": 280,
+      "w": 320,
+      "h": 195
+    },
+    {
+      "id": "logistics",
+      "x": 30,
+      "y": 280,
+      "w": 590,
+      "h": 195
+    }
+  ],
+  "parts": [
+    {
+      "id": "body_kit",
+      "stock": 40,
+      "max": 80,
+      "delivery_every_min": 120,
+      "delivery_qty": 26
+    },
+    {
+      "id": "engine",
+      "stock": 30,
+      "max": 60,
+      "delivery_every_min": 180,
+      "delivery_qty": 38
+    },
+    {
+      "id": "interior",
+      "stock": 35,
+      "max": 70,
+      "delivery_every_min": 120,
+      "delivery_qty": 26
+    },
+    {
+      "id": "wheels",
+      "stock": 45,
+      "max": 90,
+      "delivery_every_min": 240,
+      "delivery_qty": 52
+    }
+  ],
+  "stations": [
+    {
+      "id": "W1",
+      "shop": "welding",
+      "type": "robot_weld",
+      "cycle": 250,
+      "units": 1,
+      "buffer": 4,
+      "part": "body_kit",
+      "mtbf_h": 30,
+      "mttr_min": [
+        30,
+        90
+      ],
+      "defect": 0.0033,
+      "x": 80,
+      "y": 140
+    },
+    {
+      "id": "W2",
+      "shop": "welding",
+      "type": "robot_weld",
+      "cycle": 260,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 26,
+      "mttr_min": [
+        30,
+        100
+      ],
+      "defect": 0.0044,
+      "x": 150,
+      "y": 140
+    },
+    {
+      "id": "W3",
+      "shop": "welding",
+      "type": "robot_weld",
+      "cycle": 268,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 22,
+      "mttr_min": [
+        40,
+        120
+      ],
+      "defect": 0.0044,
+      "x": 220,
+      "y": 140
+    },
+    {
+      "id": "W4",
+      "shop": "welding",
+      "type": "metrology",
+      "cycle": 240,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 60,
+      "mttr_min": [
+        20,
+        45
+      ],
+      "defect": 0.0,
+      "x": 290,
+      "y": 140
+    },
+    {
+      "id": "P1",
+      "shop": "paint",
+      "type": "pretreat",
+      "cycle": 250,
+      "units": 1,
+      "buffer": 6,
+      "mtbf_h": 50,
+      "mttr_min": [
+        30,
+        80
+      ],
+      "defect": 0.0022,
+      "x": 420,
+      "y": 140
+    },
+    {
+      "id": "P2",
+      "shop": "paint",
+      "type": "paint_booth",
+      "cycle": 298,
+      "units": 1,
+      "buffer": 6,
+      "mtbf_h": 24,
+      "mttr_min": [
+        40,
+        110
+      ],
+      "defect": 0.011,
+      "x": 500,
+      "y": 140
+    },
+    {
+      "id": "P3",
+      "shop": "paint",
+      "type": "oven",
+      "cycle": 840,
+      "units": 3,
+      "buffer": 4,
+      "mtbf_h": 70,
+      "mttr_min": [
+        60,
+        150
+      ],
+      "defect": 0.0028,
+      "x": 580,
+      "y": 140
+    },
+    {
+      "id": "A1",
+      "shop": "assembly",
+      "type": "trim",
+      "cycle": 275,
+      "units": 1,
+      "buffer": 6,
+      "part": "interior",
+      "mtbf_h": 45,
+      "mttr_min": [
+        15,
+        50
+      ],
+      "defect": 0.0055,
+      "x": 710,
+      "y": 140
+    },
+    {
+      "id": "A2",
+      "shop": "assembly",
+      "type": "marriage",
+      "cycle": 288,
+      "units": 1,
+      "buffer": 4,
+      "part": "engine",
+      "mtbf_h": 28,
+      "mttr_min": [
+        30,
+        90
+      ],
+      "defect": 0.0044,
+      "x": 810,
+      "y": 140
+    },
+    {
+      "id": "A3",
+      "shop": "assembly",
+      "type": "final",
+      "cycle": 270,
+      "units": 1,
+      "buffer": 4,
+      "part": "wheels",
+      "mtbf_h": 40,
+      "mttr_min": [
+        20,
+        60
+      ],
+      "defect": 0.0055,
+      "x": 910,
+      "y": 140
+    },
+    {
+      "id": "Q1",
+      "shop": "qc",
+      "type": "alignment",
+      "cycle": 240,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 55,
+      "mttr_min": [
+        20,
+        60
+      ],
+      "defect": 0.0,
+      "x": 910,
+      "y": 350
+    },
+    {
+      "id": "Q2",
+      "shop": "qc",
+      "type": "water_test",
+      "cycle": 250,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 80,
+      "mttr_min": [
+        20,
+        50
+      ],
+      "defect": 0.0,
+      "x": 810,
+      "y": 350
+    },
+    {
+      "id": "Q3",
+      "shop": "qc",
+      "type": "inspection",
+      "cycle": 230,
+      "units": 1,
+      "buffer": 4,
+      "mtbf_h": 120,
+      "mttr_min": [
+        10,
+        30
+      ],
+      "defect": 0.0,
+      "inspection": true,
+      "x": 710,
+      "y": 350
+    },
+    {
+      "id": "RW",
+      "shop": "qc",
+      "type": "rework",
+      "cycle": 1200,
+      "units": 2,
+      "buffer": 8,
+      "mtbf_h": 200,
+      "mttr_min": [
+        10,
+        30
+      ],
+      "defect": 0.0,
+      "rework": true,
+      "x": 710,
+      "y": 432
+    },
+    {
+      "id": "L1",
+      "shop": "logistics",
+      "type": "yard",
+      "cycle": 120,
+      "units": 2,
+      "buffer": 30,
+      "mtbf_h": 500,
+      "mttr_min": [
+        10,
+        20
+      ],
+      "defect": 0.0,
+      "sink": true,
+      "x": 470,
+      "y": 390
+    }
+  ],
+  "sensor_baseline": {
+    "robot_weld": {
+      "vibration": 2.2,
+      "temperature": 46,
+      "current": 38
+    },
+    "metrology": {
+      "vibration": 0.6,
+      "temperature": 24,
+      "current": 6
+    },
+    "pretreat": {
+      "vibration": 1.4,
+      "temperature": 52,
+      "current": 55
+    },
+    "paint_booth": {
+      "vibration": 1.8,
+      "temperature": 23,
+      "current": 72
+    },
+    "oven": {
+      "vibration": 1.1,
+      "temperature": 165,
+      "current": 120
+    },
+    "trim": {
+      "vibration": 1.5,
+      "temperature": 28,
+      "current": 20
+    },
+    "marriage": {
+      "vibration": 2.6,
+      "temperature": 34,
+      "current": 44
+    },
+    "final": {
+      "vibration": 1.7,
+      "temperature": 30,
+      "current": 25
+    },
+    "alignment": {
+      "vibration": 1.2,
+      "temperature": 26,
+      "current": 15
+    },
+    "water_test": {
+      "vibration": 1.0,
+      "temperature": 18,
+      "current": 30
+    },
+    "inspection": {
+      "vibration": 0.4,
+      "temperature": 24,
+      "current": 4
+    },
+    "rework": {
+      "vibration": 0.8,
+      "temperature": 25,
+      "current": 8
+    },
+    "yard": {
+      "vibration": 0.5,
+      "temperature": 15,
+      "current": 5
+    }
+  }
+}

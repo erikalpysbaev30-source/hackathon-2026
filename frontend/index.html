@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ALLUR Digital Twin</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233fa7ff'/%3E%3Ctext x='16' y='22' font-size='14' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%2304111f'%3EDT%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="i18n.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo">DT</div>
+    <div>
+      <div class="title" data-i18n="app_title"></div>
+      <div class="sub" data-i18n="app_sub"></div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="plant" data-i18n="tab_plant"></button>
+    <button class="tab" data-tab="exec" data-i18n="tab_exec"></button>
+    <button class="tab" data-tab="incidents"><span data-i18n="tab_incidents"></span> <span id="inc-badge" class="badge hidden">0</span></button>
+    <button class="tab" data-tab="ai" data-i18n="tab_ai"></button>
+  </nav>
+  <div class="controls">
+    <div class="clock"><span id="clock">--:--</span><small id="clock-sub"></small></div>
+    <select id="speed" aria-label="speed">
+      <option value="1" data-i18n="speed_1"></option>
+      <option value="60" data-i18n="speed_60"></option>
+      <option value="300" data-i18n="speed_300"></option>
+      <option value="900" data-i18n="speed_900"></option>
+    </select>
+    <button id="pause" class="btn ghost" data-i18n="pause"></button>
+    <div class="lang">
+      <button data-lang="ru" class="active">RU</button><button data-lang="ko">한국어</button>
+    </div>
+    <span id="conn" class="conn"></span>
+  </div>
+</header>
+
+<section class="kpis" id="kpis"></section>
+
+<main>
+  <!-- PLANT -->
+  <section class="view active" id="view-plant">
+    <div class="plant-grid">
+      <div class="card map-card">
+        <div class="card-head">
+          <h3 data-i18n="tab_plant"></h3>
+          <div class="legend" id="legend"></div>
+        </div>
+        <svg id="map" viewBox="0 40 1000 445" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="map-foot">
+          <span><span data-i18n="bottleneck_now"></span>: <b id="bn-now">—</b></span>
+          <span class="muted" data-i18n="click_hint"></span>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h3 data-i18n="scenarios"></h3>
+          <div class="scenarios">
+            <button class="btn sc" data-sc="robot_failure" data-i18n="sc_robot_failure"></button>
+            <button class="btn sc" data-sc="supply_delay" data-i18n="sc_supply_delay"></button>
+            <button class="btn sc" data-sc="paint_quality" data-i18n="sc_paint_quality"></button>
+            <button class="btn sc" data-sc="wear" data-i18n="sc_wear"></button>
+            <button class="btn ghost sc" data-sc="reset" data-i18n="sc_reset"></button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="forecast_title"></h3>
+          <div id="forecast-mini"></div>
+        </div>
+        <div class="card grow">
+          <h3 data-i18n="incidents_live"></h3>
+          <ul class="feed" id="feed"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXEC -->
+  <section class="view" id="view-exec">
+    <div class="grid3">
+      <div class="card span2"><h3 data-i18n="output_vs_plan"></h3><div class="chart"><canvas id="c-output"></canvas></div></div>
+      <div class="card"><h3 data-i18n="forecast_title"></h3><div id="forecast-full"></div></div>
+      <div class="card span2"><h3 data-i18n="losses_by_station"></h3><div class="chart"><canvas id="c-losses"></canvas></div></div>
+      <div class="card"><h3 data-i18n="recs_title"></h3><div id="recs"></div></div>
+      <div class="card"><h3 data-i18n="jph_oee"></h3><div class="chart"><canvas id="c-jph"></canvas></div></div>
+      <div class="card"><h3 data-i18n="oee_by_station"></h3><div class="chart"><canvas id="c-oee"></canvas></div></div>
+      <div class="card"><h3 data-i18n="bottleneck_share"></h3><div class="chart"><canvas id="c-bn"></canvas></div></div>
+      <div class="card"><h3 data-i18n="defects_pareto"></h3><div class="chart"><canvas id="c-defects"></canvas></div></div>
+      <div class="card span2"><h3 data-i18n="stock_title"></h3><div id="stock"></div></div>
+    </div>
+  </section>
+
+  <!-- INCIDENTS -->
+  <section class="view" id="view-incidents">
+    <div class="card">
+      <div class="card-head">
+        <h3 data-i18n="tab_incidents"></h3>
+        <div class="filters">
+          <label><input type="checkbox" id="only-active" checked> <span data-i18n="active_only"></span></label>
+          <a class="btn ghost" href="/api/export.csv" data-i18n="export"></a>
+        </div>
+      </div>
+      <table class="table" id="inc-table">
+        <thead><tr><th data-i18n="time"></th><th data-i18n="severity"></th><th data-i18n="event"></th><th data-i18n="status"></th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- AI -->
+  <section class="view" id="view-ai">
+    <div class="grid3">
+      <div class="card span2"><h3 data-i18n="risk_table"></h3>
+        <table class="table" id="risk-table">
+          <thead><tr><th data-i18n="station"></th><th data-i18n="state"></th><th data-i18n="health"></th><th data-i18n="risk2h"></th><th data-i18n="drivers"></th><th data-i18n="action"></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card"><h3 data-i18n="model_card"></h3><p class="muted small" data-i18n="model_desc"></p><div id="model-metrics"></div></div>
+      <div class="card span2"><h3 data-i18n="effect_title"></h3><p class="muted small" id="effect-desc"></p><div class="chart"><canvas id="c-effect"></canvas></div></div>
+      <div class="card"><h3 data-i18n="calc_title"></h3><div id="calc"></div></div>
+    </div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div id="drawer-body"></div>
+</aside>
+
+<script src="app.js"></script>
+</body>
+</html>

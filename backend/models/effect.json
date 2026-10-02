@@ -1,0 +1,28 @@
+{
+  "days_per_seed": 10.0,
+  "seeds": 4,
+  "reactive": {
+    "cars": 2450.25,
+    "jph": 10.209,
+    "breakdowns": 76.75,
+    "breakdown_min": 4599.005,
+    "maintenance_min": 0.0,
+    "plan_hit": 0.617
+  },
+  "predictive": {
+    "cars": 2641.75,
+    "jph": 11.007,
+    "breakdowns": 37.25,
+    "breakdown_min": 2084.161,
+    "maintenance_min": 1362.5,
+    "plan_hit": 0.883
+  },
+  "delta": {
+    "breakdown_min_pct": -54.7,
+    "breakdowns_pct": -51.5,
+    "output_pct": 7.82,
+    "extra_cars_per_day": 19.15,
+    "plan_hit_pp": 26.6
+  },
+  "threshold": 0.35
+}
