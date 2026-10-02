@@ -8,7 +8,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
 button, select, input { font: inherit; color: inherit; }
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
+:root { color-scheme: dark; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; line-height: 1.45; }
 

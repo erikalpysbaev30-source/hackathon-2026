@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALLUR Digital Twin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233fa7ff'/%3E%3Ctext x='16' y='22' font-size='14' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%2304111f'%3EDT%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #0b1220; --panel: #111a2e; --panel2: #16223b; --line: #22314f; --text: #e6edf7; --muted: #8a9bb8;
+  --accent: #3fa7ff; --accent2: #22d3a6;
+  --working: #22c55e; --starved: #64748b; --blocked: #f59e0b; --down: #ef4444; --maintenance: #a78bfa; --no_parts: #fb923c;
+  --risk-low: #22c55e; --risk-medium: #f59e0b; --risk-high: #ef4444;
+  font-family: "Inter", "Segoe UI", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
+button, select, input { font: inherit; color: inherit; }
+.hidden, [hidden] { display: none !important; }
+:root { color-scheme: dark; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; line-height: 1.45; }
+
+.top { display: flex; align-items: center; gap: 18px; padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; position: sticky; top: 0; z-index: 10; }
+.brand { display: flex; gap: 10px; align-items: center; }
+.logo { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: grid; place-items: center; font-weight: 800; color: #04111f; }
+.title { font-weight: 700; font-size: 16px; }
+.sub { color: var(--muted); font-size: 12px; }
+.tabs { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.tab { background: transparent; border: 1px solid transparent; padding: 8px 14px; border-radius: 8px; cursor: pointer; color: var(--muted); }
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--panel2); border-color: var(--line); color: var(--text); }
+.badge { background: var(--down); color: #fff; border-radius: 10px; padding: 0 7px; font-size: 11px; margin-left: 4px; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.clock span { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock small { color: var(--muted); font-size: 11px; }
+select { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lang button { background: transparent; border: 0; padding: 6px 10px; cursor: pointer; color: var(--muted); }
+.lang button.active { background: var(--accent); color: #04111f; font-weight: 700; }
+.conn { width: 10px; height: 10px; border-radius: 50%; background: var(--down); }
+.conn.on { background: var(--working); box-shadow: 0 0 8px var(--working); }
+
+.btn { color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: #04111f; border-color: var(--accent); font-weight: 600; }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 12px 18px 0; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.kpi .label { color: var(--muted); font-size: 12px; }
+.kpi .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi .value small { font-size: 13px; color: var(--muted); font-weight: 500; }
+.kpi .bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.kpi .bar i { display: block; height: 100%; background: var(--accent); }
+.kpi.good .value { color: var(--working); } .kpi.warn .value { color: var(--blocked); } .kpi.bad .value { color: var(--down); }
+
+main { padding: 12px 18px 24px; }
+.view { display: none; } .view.active { display: block; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.card h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-head h3 { margin: 0; }
+.plant-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; }
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.side .grow { flex: 1; min-height: 200px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.span2 { grid-column: span 2; }
+@media (max-width: 1100px) { .plant-grid { grid-template-columns: 1fr; } .grid3 { grid-template-columns: 1fr; } .span2 { grid-column: auto; } }
+.chart { position: relative; height: 240px; }
+
+#map { width: 100%; height: auto; display: block; margin-top: 8px; }
+.map-foot { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin-top: 6px; flex-wrap: wrap; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.shop rect { fill: #0f1830; stroke: var(--line); stroke-width: 1.5; }
+.shop text { fill: var(--muted); font-size: 13px; font-weight: 600; }
+.flow { fill: none; stroke: #2b3d63; stroke-width: 3; }
+.flow.run { stroke: #2f6fb3; stroke-dasharray: 8 6; animation: dash 1.2s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -28; } }
+.station { cursor: pointer; }
+.station rect.body { stroke-width: 2; rx: 9; }
+.station text { font-size: 13px; font-weight: 700; fill: #04111f; text-anchor: middle; pointer-events: none; }
+.station .bn { fill: none; stroke: #fff; stroke-width: 2.5; stroke-dasharray: 4 3; }
+.station.down rect.body { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .45; } }
+.station:hover rect.body { filter: brightness(1.15); }
+.risk-dot text { font-size: 9px; fill: #fff; font-weight: 700; text-anchor: middle; }
+.buf rect { fill: #24365a; } .buf rect.f { fill: var(--accent); }
+.stock-svg text { font-size: 11px; fill: var(--muted); }
+
+.scenarios { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.scenarios .btn { text-align: left; font-size: 13px; }
+.scenarios .btn.ghost { grid-column: span 2; text-align: center; }
+
+.feed { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow: auto; }
+.feed li { padding: 8px 10px; border-radius: 8px; background: var(--panel2); border-left: 3px solid var(--starved); font-size: 13px; line-height: 1.35; }
+.feed li.critical { border-color: var(--down); } .feed li.warning { border-color: var(--blocked); } .feed li.info { border-color: var(--accent); }
+.feed li .meta { color: var(--muted); font-size: 11px; margin-bottom: 2px; display: flex; justify-content: space-between; }
+.feed li.closed { opacity: .55; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.table td { padding: 7px 8px; border-bottom: 1px solid #1a2742; vertical-align: middle; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #04111f; }
+.meter { width: 110px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 12px; align-items: center; }
+
+.big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px dashed #1f2d4a; font-size: 13px; }
+.row:last-child { border: 0; }
+.rec { background: var(--panel2); border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 13px; line-height: 1.4; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.prob { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: 6px 0 10px; }
+.prob i { display: block; height: 100%; }
+
+.stock-row { display: grid; grid-template-columns: 160px 1fr 170px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+.stock-row .meter { width: 100%; height: 12px; }
+
+.calc label { display: grid; grid-template-columns: 1fr 140px; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 8px; }
+.calc input { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%; }
+.calc .out { background: var(--panel2); border-radius: 10px; padding: 10px; margin-top: 8px; }
+
+.drawer { position: fixed; top: 0; right: 0; width: 420px; max-width: 100vw; height: 100vh; background: var(--panel); border-left: 1px solid var(--line); transform: translateX(105%); transition: transform .25s; z-index: 20; overflow: auto; padding: 18px; box-shadow: -20px 0 40px rgba(0,0,0,.4); }
+.drawer.open { transform: none; }
+.drawer .close { position: absolute; right: 12px; top: 8px; background: transparent; border: 0; font-size: 26px; cursor: pointer; color: var(--muted); }
+.drawer h2 { margin: 0 0 4px; font-size: 18px; }
+.drawer .section { margin-top: 14px; }
+.drawer .chart { height: 180px; }
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">DT</div>
+    <div>
+      <div class="title" data-i18n="app_title"></div>
+      <div class="sub" data-i18n="app_sub"></div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="plant" data-i18n="tab_plant"></button>
+    <button class="tab" data-tab="exec" data-i18n="tab_exec"></button>
+    <button class="tab" data-tab="incidents"><span data-i18n="tab_incidents"></span> <span id="inc-badge" class="badge hidden">0</span></button>
+    <button class="tab" data-tab="ai" data-i18n="tab_ai"></button>
+  </nav>
+  <div class="controls">
+    <div class="clock"><span id="clock">--:--</span><small id="clock-sub"></small></div>
+    <select id="speed" aria-label="speed">
+      <option value="1" data-i18n="speed_1"></option>
+      <option value="60" data-i18n="speed_60"></option>
+      <option value="300" data-i18n="speed_300"></option>
+      <option value="900" data-i18n="speed_900"></option>
+    </select>
+    <button id="pause" class="btn ghost" data-i18n="pause"></button>
+    <div class="lang">
+      <button data-lang="ru" class="active">RU</button><button data-lang="ko">한국어</button>
+    </div>
+    <span id="conn" class="conn"></span>
+  </div>
+</header>
+
+<section class="kpis" id="kpis"></section>
+
+<main>
+  <!-- PLANT -->
+  <section class="view active" id="view-plant">
+    <div class="plant-grid">
+      <div class="card map-card">
+        <div class="card-head">
+          <h3 data-i18n="tab_plant"></h3>
+          <div class="legend" id="legend"></div>
+        </div>
+        <svg id="map" viewBox="0 40 1000 445" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="map-foot">
+          <span><span data-i18n="bottleneck_now"></span>: <b id="bn-now">—</b></span>
+          <span class="muted" data-i18n="click_hint"></span>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h3 data-i18n="scenarios"></h3>
+          <div class="scenarios">
+            <button class="btn sc" data-sc="robot_failure" data-i18n="sc_robot_failure"></button>
+            <button class="btn sc" data-sc="supply_delay" data-i18n="sc_supply_delay"></button>
+            <button class="btn sc" data-sc="paint_quality" data-i18n="sc_paint_quality"></button>
+            <button class="btn sc" data-sc="wear" data-i18n="sc_wear"></button>
+            <button class="btn ghost sc" data-sc="reset" data-i18n="sc_reset"></button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="forecast_title"></h3>
+          <div id="forecast-mini"></div>
+        </div>
+        <div class="card grow">
+          <h3 data-i18n="incidents_live"></h3>
+          <ul class="feed" id="feed"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXEC -->
+  <section class="view" id="view-exec">
+    <div class="grid3">
+      <div class="card span2"><h3 data-i18n="output_vs_plan"></h3><div class="chart"><canvas id="c-output"></canvas></div></div>
+      <div class="card"><h3 data-i18n="forecast_title"></h3><div id="forecast-full"></div></div>
+      <div class="card span2"><h3 data-i18n="losses_by_station"></h3><div class="chart"><canvas id="c-losses"></canvas></div></div>
+      <div class="card"><h3 data-i18n="recs_title"></h3><div id="recs"></div></div>
+      <div class="card"><h3 data-i18n="jph_oee"></h3><div class="chart"><canvas id="c-jph"></canvas></div></div>
+      <div class="card"><h3 data-i18n="oee_by_station"></h3><div class="chart"><canvas id="c-oee"></canvas></div></div>
+      <div class="card"><h3 data-i18n="bottleneck_share"></h3><div class="chart"><canvas id="c-bn"></canvas></div></div>
+      <div class="card"><h3 data-i18n="defects_pareto"></h3><div class="chart"><canvas id="c-defects"></canvas></div></div>
+      <div class="card span2"><h3 data-i18n="stock_title"></h3><div id="stock"></div></div>
+    </div>
+  </section>
+
+  <!-- INCIDENTS -->
+  <section class="view" id="view-incidents">
+    <div class="card">
+      <div class="card-head">
+        <h3 data-i18n="tab_incidents"></h3>
+        <div class="filters">
+          <label><input type="checkbox" id="only-active" checked> <span data-i18n="active_only"></span></label>
+          <a class="btn ghost" href="/api/export.csv" data-i18n="export" data-server-only></a>
+        </div>
+      </div>
+      <table class="table" id="inc-table">
+        <thead><tr><th data-i18n="time"></th><th data-i18n="severity"></th><th data-i18n="event"></th><th data-i18n="status"></th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- AI -->
+  <section class="view" id="view-ai">
+    <div class="grid3">
+      <div class="card span2"><h3 data-i18n="risk_table"></h3>
+        <table class="table" id="risk-table">
+          <thead><tr><th data-i18n="station"></th><th data-i18n="state"></th><th data-i18n="health"></th><th data-i18n="risk2h"></th><th data-i18n="drivers"></th><th data-i18n="action"></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card"><h3 data-i18n="model_card"></h3><p class="muted small" data-i18n="model_desc"></p><div id="model-metrics"></div></div>
+      <div class="card span2"><h3 data-i18n="effect_title"></h3><p class="muted small" id="effect-desc"></p><div class="chart"><canvas id="c-effect"></canvas></div></div>
+      <div class="card"><h3 data-i18n="calc_title"></h3><div id="calc"></div></div>
+    </div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div id="drawer-body"></div>
+</aside>
+
+<script>window.LOCAL_DATA = {"config": {"name": "Allur Kostanay — line 1 (demo layout)", "tick_seconds": 10, "shift_hours": 8, "plan_per_shift": 80, "models": [{"id": "sedan", "mix": 0.4}, {"id": "crossover", "mix": 0.45}, {"id": "pickup", "mix": 0.15}], "shops": [{"id": "welding", "x": 30, "y": 60, "w": 310, "h": 180}, {"id": "paint", "x": 370, "y": 60, "w": 250, "h": 180}, {"id": "assembly", "x": 650, "y": 60, "w": 320, "h": 180}, {"id": "qc", "x": 650, "y": 280, "w": 320, "h": 195}, {"id": "logistics", "x": 30, "y": 280, "w": 590, "h": 195}], "parts": [{"id": "body_kit", "stock": 40, "max": 80, "delivery_every_min": 120, "delivery_qty": 26}, {"id": "engine", "stock": 30, "max": 60, "delivery_every_min": 180, "delivery_qty": 38}, {"id": "interior", "stock": 35, "max": 70, "delivery_every_min": 120, "delivery_qty": 26}, {"id": "wheels", "stock": 45, "max": 90, "delivery_every_min": 240, "delivery_qty": 52}], "stations": [{"id": "W1", "shop": "welding", "type": "robot_weld", "cycle": 250, "units": 1, "buffer": 4, "part": "body_kit", "mtbf_h": 30, "mttr_min": [30, 90], "defect": 0.0033, "x": 80, "y": 140}, {"id": "W2", "shop": "welding", "type": "robot_weld", "cycle": 260, "units": 1, "buffer": 4, "mtbf_h": 26, "mttr_min": [30, 100], "defect": 0.0044, "x": 150, "y": 140}, {"id": "W3", "shop": "welding", "type": "robot_weld", "cycle": 268, "units": 1, "buffer": 4, "mtbf_h": 22, "mttr_min": [40, 120], "defect": 0.0044, "x": 220, "y": 140}, {"id": "W4", "shop": "welding", "type": "metrology", "cycle": 240, "units": 1, "buffer": 4, "mtbf_h": 60, "mttr_min": [20, 45], "defect": 0.0, "x": 290, "y": 140}, {"id": "P1", "shop": "paint", "type": "pretreat", "cycle": 250, "units": 1, "buffer": 6, "mtbf_h": 50, "mttr_min": [30, 80], "defect": 0.0022, "x": 420, "y": 140}, {"id": "P2", "shop": "paint", "type": "paint_booth", "cycle": 298, "units": 1, "buffer": 6, "mtbf_h": 24, "mttr_min": [40, 110], "defect": 0.011, "x": 500, "y": 140}, {"id": "P3", "shop": "paint", "type": "oven", "cycle": 840, "units": 3, "buffer": 4, "mtbf_h": 70, "mttr_min": [60, 150], "defect": 0.0028, "x": 580, "y": 140}, {"id": "A1", "shop": "assembly", "type": "trim", "cycle": 275, "units": 1, "buffer": 6, "part": "interior", "mtbf_h": 45, "mttr_min": [15, 50], "defect": 0.0055, "x": 710, "y": 140}, {"id": "A2", "shop": "assembly", "type": "marriage", "cycle": 288, "units": 1, "buffer": 4, "part": "engine", "mtbf_h": 28, "mttr_min": [30, 90], "defect": 0.0044, "x": 810, "y": 140}, {"id": "A3", "shop": "assembly", "type": "final", "cycle": 270, "units": 1, "buffer": 4, "part": "wheels", "mtbf_h": 40, "mttr_min": [20, 60], "defect": 0.0055, "x": 910, "y": 140}, {"id": "Q1", "shop": "qc", "type": "alignment", "cycle": 240, "units": 1, "buffer": 4, "mtbf_h": 55, "mttr_min": [20, 60], "defect": 0.0, "x": 910, "y": 350}, {"id": "Q2", "shop": "qc", "type": "water_test", "cycle": 250, "units": 1, "buffer": 4, "mtbf_h": 80, "mttr_min": [20, 50], "defect": 0.0, "x": 810, "y": 350}, {"id": "Q3", "shop": "qc", "type": "inspection", "cycle": 230, "units": 1, "buffer": 4, "mtbf_h": 120, "mttr_min": [10, 30], "defect": 0.0, "inspection": true, "x": 710, "y": 350}, {"id": "RW", "shop": "qc", "type": "rework", "cycle": 1200, "units": 2, "buffer": 8, "mtbf_h": 200, "mttr_min": [10, 30], "defect": 0.0, "rework": true, "x": 710, "y": 432}, {"id": "L1", "shop": "logistics", "type": "yard", "cycle": 120, "units": 2, "buffer": 30, "mtbf_h": 500, "mttr_min": [10, 20], "defect": 0.0, "sink": true, "x": 470, "y": 390}], "sensor_baseline": {"robot_weld": {"vibration": 2.2, "temperature": 46, "current": 38}, "metrology": {"vibration": 0.6, "temperature": 24, "current": 6}, "pretreat": {"vibration": 1.4, "temperature": 52, "current": 55}, "paint_booth": {"vibration": 1.8, "temperature": 23, "current": 72}, "oven": {"vibration": 1.1, "temperature": 165, "current": 120}, "trim": {"vibration": 1.5, "temperature": 28, "current": 20}, "marriage": {"vibration": 2.6, "temperature": 34, "current": 44}, "final": {"vibration": 1.7, "temperature": 30, "current": 25}, "alignment": {"vibration": 1.2, "temperature": 26, "current": 15}, "water_test": {"vibration": 1.0, "temperature": 18, "current": 30}, "inspection": {"vibration": 0.4, "temperature": 24, "current": 4}, "rework": {"vibration": 0.8, "temperature": 25, "current": 8}, "yard": {"vibration": 0.5, "temperature": 15, "current": 5}}}, "model": {"features": ["vib_ratio", "temp_ratio", "cur_ratio", "vib_ratio_15", "temp_ratio_15", "vib_slope", "temp_slope", "cycle_drift", "age_ratio"], "mean": [1.1768742078738694, 1.049091348572453, 0.9452037105989086, 1.1748931080967666, 1.0492551097786473, 0.011213777897754913, -0.0001270217174464966, 1.0400752559988562, 0.5542020248221651], "scale": [0.3202100612173414, 0.04120257965188034, 0.21241156163649225, 0.28912668451385276, 0.03836912014066937, 0.26142026247373457, 0.020513479305738998, 0.029468445270571717, 0.34048169456499394], "clf_w": [1.2410303843610588, 0.23423363897983637, -0.5373176681350709, 0.4929402974449726, 1.283159792582932, -0.13644582874553574, 0.22553568536733523, -0.4918285742548976, -0.5859728871943104, -0.339238597949843, -0.054191163767519694, 0.3904542609844038, -0.005725913456082415, -0.22245735003193837, 0.04020914824972116, 0.019389869036833946, 0.16813640604617433, 0.10894763630541505], "clf_b": -3.24952957140192, "reg_w": [-0.05919463047826168, -0.02006854870894749, 0.02873618723581711, -0.027091731534294384, -0.10104874929176966, 0.006831574180675735, 0.003031128813121258, 0.0023919032616242825, -0.0586200711837752, 0.016386998340085907, -0.001628506056860021, -0.021270828978618653, 0.0003952414681570251, -0.0067892585617546925, -0.0015060353749333552, 0.000499069110879392, 0.004273689115713056, 0.01935851104184543], "reg_b": 0.5989248050051608, "healthy": [1.0158957219251337, 1.0057417582417583, 0.9925, 0.9993333333333334, 1.0059272486772488, 0.005266789794550055, -0.0004392136186902503, 1.0135149581015084, 0.08155902777777778], "metrics": {"roc_auc": 0.844, "lift_top10": 3.82, "recall_top10": 0.382, "samples": 47218, "health_mae": 0.019}}, "effect": {"days_per_seed": 10.0, "seeds": 4, "reactive": {"cars": 2450.25, "jph": 10.209, "breakdowns": 76.75, "breakdown_min": 4599.005, "maintenance_min": 0.0, "plan_hit": 0.617}, "predictive": {"cars": 2641.75, "jph": 11.007, "breakdowns": 37.25, "breakdown_min": 2084.161, "maintenance_min": 1362.5, "plan_hit": 0.883}, "delta": {"breakdown_min_pct": -54.7, "breakdowns_pct": -51.5, "output_pct": 7.82, "extra_cars_per_day": 19.15, "plan_hit_pp": 26.6}, "threshold": 0.35}};</script>
+<script>
+// UI dictionary: Russian (default) and Korean.
+window.I18N = {
+  ru: {
+    app_title: "Цифровой двойник автозавода",
+    app_sub: "АЛЛЮР · Костанай · линия 1", app_sub_demo: "АЛЛЮР · линия 1 · демо в браузере, данные симулированы",
+    tab_plant: "Цех онлайн", tab_exec: "Панель руководителя", tab_incidents: "Инциденты", tab_ai: "ИИ-прогноз и эффект",
+    day: "День", shift: "Смена", speed: "Скорость", pause: "Пауза", live: "онлайн", offline: "нет связи",
+    speed_1: "×1 (реальное время)", speed_60: "×60 (1 с = 1 мин)", speed_300: "×300", speed_900: "×900",
+    // KPI
+    k_produced: "Выпуск за смену", k_plan: "план", k_jph: "Темп, авто/ч", k_oee: "OEE линии (1 ч)", k_fpy: "FPY — годные с 1-го раза",
+    k_downtime: "Аварийные простои, мин", k_wip: "НЗП, кузовов", k_attain: "Выполнение плана к текущему часу",
+    k_rework: "на доработке",
+    // shops & stations
+    shop_welding: "Сварочный цех", shop_paint: "Окрасочный цех", shop_assembly: "Сборочный цех", shop_qc: "Контроль качества (ОТК)", shop_logistics: "Склад и отгрузка",
+    st_W1: "Сварка основания", st_W2: "Сварка боковин", st_W3: "Сборка-сварка кузова", st_W4: "Контроль геометрии",
+    st_P1: "Подготовка и ЭФГ", st_P2: "Окрасочная камера", st_P3: "Сушильная печь",
+    st_A1: "Монтаж салона", st_A2: "Установка силового агрегата", st_A3: "Финальная сборка",
+    st_Q1: "Развал-схождение, стенд", st_Q2: "Тест на герметичность", st_Q3: "Финальная инспекция", st_RW: "Доработка", st_L1: "Площадка отгрузки",
+    // states
+    s_working: "Работает", s_starved: "Ожидание", s_blocked: "Блокировка", s_down: "Авария", s_maintenance: "Плановое ТО", s_no_parts: "Нет комплектующих",
+    s_hint_starved: "нет кузова на входе", s_hint_blocked: "выход занят",
+    // parts
+    p_body_kit: "Кузовные панели", p_engine: "Двигатели", p_interior: "Комплекты салона", p_wheels: "Колёса",
+    stock_title: "Склад комплектующих", next_delivery: "поставка через {m} мин", delivery_blocked: "поставка задерживается",
+    // defects
+    d_weld_spot: "Сварная точка", d_surface_prep: "Подготовка поверхности", d_paint_run: "Подтёк / сорность ЛКП", d_paint_cure: "Недосушка ЛКП",
+    d_trim_gap: "Зазоры отделки", d_torque: "Момент затяжки", d_fluid_leak: "Подтекание жидкостей", d_other: "Прочее",
+    // incidents
+    sev_critical: "Критично", sev_warning: "Внимание", sev_info: "Инфо",
+    stat_open: "Открыт", stat_ack: "Принят", stat_closed: "Закрыт",
+    i_breakdown: "{st}: аварийная остановка, ремонт ≈ {minutes} мин",
+    i_maintenance: "{st}: плановое ТО ({minutes} мин)",
+    i_no_parts: "{st}: остановка — нет комплектующих «{part}»",
+    i_delivery_missed: "Срыв поставки: {part}",
+    i_low_stock: "Низкий запас: {part} — {stock} шт.",
+    i_quality_spike: "{st}: рост брака «{defect}» — {count} за час",
+    i_failure_risk: "{st}: ИИ прогнозирует отказ в ближайшие 4 ч (риск {risk}%, здоровье {health}%)",
+    i_plan_risk: "Риск срыва плана смены: прогноз {expected} из {plan} авто",
+    i_shift_report: "Итог смены: {produced} из {plan} авто",
+    ack: "Принять", all: "Все", active_only: "Только активные", time: "Время", severity: "Уровень", event: "Событие", status: "Статус",
+    incidents_live: "Инциденты и отклонения", no_incidents: "Активных инцидентов нет",
+    // plant tab
+    scenarios: "Сценарии для демонстрации",
+    sc_robot_failure: "Авария робота W3", sc_supply_delay: "Задержка поставки двигателей", sc_paint_quality: "Брак в окрасочной камере",
+    sc_wear: "Скрытый износ узла A2", sc_reset: "Сброс",
+    legend: "Состояния", bottleneck_now: "Узкое место сейчас", click_hint: "Нажмите на участок, чтобы увидеть детали",
+    // station drawer
+    health: "Индекс здоровья (ИИ)", risk2h: "Риск отказа за 4 ч", drivers: "Причины", sensors: "Датчики",
+    vibration: "вибрация", temperature: "температура", current: "ток двигателя", cycle_drift: "рост времени цикла",
+    since_maintenance: "давно не было ТО", vibration_trend: "тренд вибрации", temperature_trend: "тренд температуры",
+    availability: "Доступность", performance: "Производительность", quality: "Качество", utilization: "Загрузка",
+    schedule_pm: "Назначить ТО (25 мин)", schedule_pm_short: "Назначить ТО", pm_done: "ТО назначено", buffer: "Буфер на входе", cycle: "Такт, с", failures: "Отказов за смену",
+    sensor_chart: "Датчики за последний час (относительно нормы)", time_in_state: "Время по состояниям, мин",
+    // exec
+    output_vs_plan: "Выпуск нарастающим итогом и план", jph_oee: "Темп (авто/ч) и OEE линии", oee_by_station: "OEE по участкам",
+    losses_by_station: "Потери времени по участкам, мин", defects_pareto: "Дефекты (Парето)", bottleneck_share: "Узкие места за 2 ч",
+    forecast_title: "Прогноз ИИ на конец смены", forecast_expected: "Ожидаемый выпуск", forecast_range: "диапазон P10–P90",
+    p_plan: "Вероятность выполнения плана", predicted_bn: "Ожидаемое узкое место", expected_downtime: "Ожидаемые аварийные простои",
+    recs_title: "Рекомендации ИИ", no_recs: "Сейчас вмешательство не требуется", apply: "Выполнить",
+    rec_do_now: "провести ТО сейчас", rec_plan_break: "ТО в ближайший перерыв", rec_monitor: "наблюдать",
+    rec_line: "{st}: {verdict}. Эффект за 4 ч: {gain} авто, −{saved} мин аварийного простоя",
+    calculating: "расчёт…", produced: "Выпуск", plan_line: "План", minutes: "мин", cars: "авто",
+    // ai tab
+    risk_table: "Состояние оборудования по оценке ИИ", station: "Участок", state: "Состояние", action: "Действие",
+    model_card: "Модель прогнозирования отказов", model_desc: "Градиентный бустинг по данным датчиков (вибрация, температура, ток), дрейфу такта и времени с последнего ТО. Горизонт прогноза — 4 часа. Обучено на синтетической истории симулятора; на данных АЛЛЮР модель переобучается тем же конвейером.",
+    model_desc_lite: "Браузерная версия модели: логистическая регрессия по тем же признакам (вибрация, температура, ток, дрейф такта, время с последнего ТО), горизонт прогноза 4 часа. На сервере работает градиентный бустинг (ROC-AUC 0,85). Обучено на синтетической истории симулятора.",
+    m_auc: "ROC-AUC", m_lift: "Точность топ-10% выше случайной в", m_recall: "Доля отказов, пойманных в топ-10%", m_samples: "Обучающих примеров",
+    effect_title: "Эффект: реактивное vs предиктивное ТО (симуляция)", effect_desc: "Одинаковые случайные сценарии, {days} дней × {seeds} прогонов. Предиктивная политика: ИИ ставит короткое ТО, когда риск отказа высокий.",
+    reactive: "Реактивное ТО (сейчас)", predictive: "Предиктивное ТО (с двойником)",
+    e_breakdown: "Аварийные простои, мин/сутки", e_output: "Выпуск, авто/сутки", e_plan: "Смен с выполненным планом, %",
+    calc_title: "Калькулятор экономического эффекта", calc_days: "Рабочих дней в году", calc_shifts: "Смен в сутки", calc_margin: "Маржинальный доход с авто, ₸",
+    calc_downcost: "Стоимость часа простоя линии, ₸", calc_extra: "Доп. выпуск в год", calc_hours: "Сокращение аварийных простоев, ч/год",
+    calc_money: "Эффект в год, ₸", calc_note: "Оценка на одну линию. Параметры можно менять; базовые значения — допущения команды.",
+    export: "Экспорт CSV", calc_mln: "млн ₸",
+  },
+  ko: {
+    app_title: "자동차 공장 디지털 트윈",
+    app_sub: "ALLUR · 코스타나이 · 1라인", app_sub_demo: "ALLUR · 1라인 · 브라우저 데모, 시뮬레이션 데이터",
+    tab_plant: "실시간 공장", tab_exec: "경영진 대시보드", tab_incidents: "이상 및 사고", tab_ai: "AI 예측 및 효과",
+    day: "일차", shift: "교대", speed: "속도", pause: "일시정지", live: "연결됨", offline: "연결 끊김",
+    speed_1: "×1 (실시간)", speed_60: "×60 (1초 = 1분)", speed_300: "×300", speed_900: "×900",
+    k_produced: "교대 생산량", k_plan: "계획", k_jph: "시간당 생산(JPH)", k_oee: "라인 OEE (1시간)", k_fpy: "직행률 (FPY)",
+    k_downtime: "고장 비가동, 분", k_wip: "재공 (WIP), 대", k_attain: "현재 시점 계획 달성률",
+    k_rework: "수정 대기",
+    shop_welding: "차체(용접) 공장", shop_paint: "도장 공장", shop_assembly: "의장(조립) 공장", shop_qc: "품질 검사", shop_logistics: "부품 창고 및 출하",
+    st_W1: "언더바디 용접", st_W2: "사이드 패널 용접", st_W3: "차체 메인 용접", st_W4: "차체 치수 검사",
+    st_P1: "전처리·전착", st_P2: "도장 부스", st_P3: "건조로",
+    st_A1: "내장 조립", st_A2: "파워트레인 장착", st_A3: "최종 조립",
+    st_Q1: "휠 얼라인먼트·시험대", st_Q2: "수밀 검사", st_Q3: "최종 검사", st_RW: "수정 작업", st_L1: "출하장",
+    s_working: "가동", s_starved: "대기", s_blocked: "막힘", s_down: "고장", s_maintenance: "예방 정비", s_no_parts: "부품 부족",
+    s_hint_starved: "투입 차체 없음", s_hint_blocked: "후공정 정체",
+    p_body_kit: "차체 패널", p_engine: "엔진", p_interior: "내장 키트", p_wheels: "휠·타이어",
+    stock_title: "부품 창고", next_delivery: "{m}분 후 입고", delivery_blocked: "입고 지연",
+    d_weld_spot: "용접 불량", d_surface_prep: "전처리 불량", d_paint_run: "도장 흘림·이물", d_paint_cure: "도막 경화 불량",
+    d_trim_gap: "내장 단차", d_torque: "체결 토크 불량", d_fluid_leak: "누유·누수", d_other: "기타",
+    sev_critical: "긴급", sev_warning: "주의", sev_info: "정보",
+    stat_open: "미처리", stat_ack: "확인됨", stat_closed: "종료",
+    i_breakdown: "{st}: 고장 정지, 수리 약 {minutes}분",
+    i_maintenance: "{st}: 예방 정비 ({minutes}분)",
+    i_no_parts: "{st}: '{part}' 부품 부족으로 정지",
+    i_delivery_missed: "납품 지연: {part}",
+    i_low_stock: "재고 부족: {part} — {stock}개",
+    i_quality_spike: "{st}: '{defect}' 불량 증가 — 1시간 {count}건",
+    i_failure_risk: "{st}: AI가 4시간 내 고장을 예측 (위험 {risk}%, 건강 지수 {health}%)",
+    i_plan_risk: "교대 계획 미달 위험: 예측 {expected}/{plan}대",
+    i_shift_report: "교대 실적: {produced}/{plan}대",
+    ack: "확인", all: "전체", active_only: "진행 중만", time: "시간", severity: "등급", event: "내용", status: "상태",
+    incidents_live: "이상 및 사고", no_incidents: "진행 중인 사고 없음",
+    scenarios: "데모 시나리오",
+    sc_robot_failure: "W3 로봇 고장", sc_supply_delay: "엔진 납품 지연", sc_paint_quality: "도장 부스 품질 이상",
+    sc_wear: "A2 설비 숨은 마모", sc_reset: "초기화",
+    legend: "상태", bottleneck_now: "현재 병목 공정", click_hint: "공정을 클릭하면 상세 정보가 표시됩니다",
+    health: "설비 건강 지수 (AI)", risk2h: "4시간 내 고장 위험", drivers: "원인", sensors: "센서",
+    vibration: "진동", temperature: "온도", current: "모터 전류", cycle_drift: "사이클 타임 증가",
+    since_maintenance: "정비 후 경과 시간", vibration_trend: "진동 추세", temperature_trend: "온도 추세",
+    availability: "가용성", performance: "성능", quality: "품질", utilization: "가동률",
+    schedule_pm: "정비 지시 (25분)", schedule_pm_short: "정비 지시", pm_done: "정비 지시됨", buffer: "투입 버퍼", cycle: "사이클, 초", failures: "교대 중 고장 횟수",
+    sensor_chart: "최근 1시간 센서 (정상 대비)", time_in_state: "상태별 시간, 분",
+    output_vs_plan: "누적 생산량 대비 계획", jph_oee: "JPH 및 라인 OEE", oee_by_station: "공정별 OEE",
+    losses_by_station: "공정별 손실 시간, 분", defects_pareto: "불량 (파레토)", bottleneck_share: "최근 2시간 병목",
+    forecast_title: "교대 종료 시점 AI 예측", forecast_expected: "예상 생산량", forecast_range: "P10–P90 범위",
+    p_plan: "계획 달성 확률", predicted_bn: "예상 병목 공정", expected_downtime: "예상 고장 비가동",
+    recs_title: "AI 권고", no_recs: "현재 조치가 필요하지 않습니다", apply: "실행",
+    rec_do_now: "즉시 정비", rec_plan_break: "다음 휴식 시간에 정비", rec_monitor: "모니터링",
+    rec_line: "{st}: {verdict}. 4시간 효과: +{gain}대, 고장 정지 −{saved}분",
+    calculating: "계산 중…", produced: "생산", plan_line: "계획", minutes: "분", cars: "대",
+    risk_table: "AI 설비 상태 평가", station: "공정", state: "상태", action: "조치",
+    model_card: "고장 예측 모델", model_desc: "센서(진동·온도·전류), 사이클 타임 변화, 마지막 정비 후 경과 시간을 이용한 그래디언트 부스팅 모델. 예측 범위 4시간. 시뮬레이터의 합성 이력으로 학습했으며, ALLUR 실제 데이터로 같은 파이프라인에서 재학습합니다.",
+    model_desc_lite: "브라우저용 경량 모델: 같은 특징(진동, 온도, 전류, 사이클 타임 변화, 정비 후 경과 시간)을 이용한 로지스틱 회귀, 예측 범위 4시간. 서버 버전은 그래디언트 부스팅(ROC-AUC 0.85)을 사용합니다. 시뮬레이터의 합성 이력으로 학습했습니다.",
+    m_auc: "ROC-AUC", m_lift: "상위 10% 정밀도 (무작위 대비 배수)", m_recall: "상위 10%에서 포착한 고장 비율", m_samples: "학습 샘플 수",
+    effect_title: "효과: 사후 정비 vs 예측 정비 (시뮬레이션)", effect_desc: "동일한 무작위 시나리오, {days}일 × {seeds}회 실행. 예측 정비: 고장 위험이 높을 때 AI가 짧은 정비를 지시.",
+    reactive: "사후 정비 (현재)", predictive: "예측 정비 (디지털 트윈)",
+    e_breakdown: "고장 비가동, 분/일", e_output: "생산량, 대/일", e_plan: "계획 달성 교대 비율, %",
+    calc_title: "경제 효과 계산기", calc_days: "연간 가동일", calc_shifts: "일일 교대 수", calc_margin: "대당 공헌이익, ₸",
+    calc_downcost: "라인 비가동 시간당 비용, ₸", calc_extra: "연간 추가 생산", calc_hours: "고장 비가동 감소, 시간/년",
+    calc_money: "연간 효과, ₸", calc_note: "1개 라인 기준. 값은 변경 가능하며 기본값은 팀의 가정입니다.",
+    export: "CSV 내보내기", calc_mln: "백만 ₸",
+  },
+};
+
+</script>
+<script>
+/* In-browser twin engine: a JavaScript port of backend/app/{simulator,ml,incidents}.py.
+   Used by the static demo (no server). Exposes window.LocalTwin with the same data the API returns. */
+(function () {
+  const FLOW = ["W1", "W2", "W3", "W4", "P1", "P2", "P3", "A1", "A2", "A3", "Q1", "Q2", "Q3", "L1"];
+  const ORDER = FLOW.concat(["RW"]);
+  const ACTIVE = new Set(["working", "down", "maintenance", "no_parts"]);
+  const STATES = ["working", "starved", "blocked", "down", "maintenance", "no_parts"];
+  const DEFECT_TYPES = { robot_weld: "weld_spot", pretreat: "surface_prep", paint_booth: "paint_run", oven: "paint_cure", trim: "trim_gap", marriage: "torque", final: "fluid_leak" };
+  const SHIFT_OFFSET = 8 * 3600;
+
+  // seeded RNG (mulberry32) whose whole state is one integer, so a plant clones with structuredClone
+  function rand(p) {
+    let t = (p.seed = (p.seed + 0x6d2b79f5) | 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  const uniform = (p, a, b) => a + (b - a) * rand(p);
+  function gauss(p, mu, sd) {
+    const u = Math.max(rand(p), 1e-12), v = rand(p);
+    return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  const r = (x, d) => Math.round(x * 10 ** d) / 10 ** d;
+
+  function newTState() { return Object.fromEntries(STATES.map((k) => [k, 0])); }
+
+  function createPlant(cfg, seed = 7, startHour = 8, warmupH = 24) {
+    const p = {
+      cfg, seed: seed * 2654435761 | 0, dt: cfg.tick_seconds, t: startHour * 3600, shiftLen: cfg.shift_hours * 3600,
+      plan: cfg.plan_per_shift, stations: {}, parts: {}, supplyBlock: {}, carSeq: 0,
+      producedShift: 0, producedTotal: 0, firstOk: 0, firstInspected: 0, defectsFound: {},
+      completions: [], history: [], bnHist: [], events: [], minuteAcc: 0, downtimeLog: [], maintLog: [],
+    };
+    for (const s of cfg.stations) {
+      p.stations[s.id] = {
+        id: s.id, shop: s.shop, type: s.type, cycle: s.cycle, nUnits: s.units || 1, x: s.x, y: s.y,
+        units: Array.from({ length: s.units || 1 }, () => ({ car: null, remaining: 0, cycle: 0 })),
+        buffer: [], bufferCap: s.buffer || 4, part: s.part || null, mtbf: s.mtbf_h * 3600, mttr: s.mttr_min,
+        defectRate: s.defect || 0, baseline: cfg.sensor_baseline[s.type], sink: !!s.sink,
+        health: 1, wearMult: 1, defectMult: 1, defectUntil: 0, state: "starved", repairLeft: 0, sinceMaint: 0,
+        activePeriod: 0, sensors: Object.assign({}, cfg.sensor_baseline[s.type]), sensorHist: [], cycleHist: [],
+        tState: newTState(), done: 0, good: 0, failures: 0, busy: 0,
+      };
+    }
+    for (const pt of cfg.parts) p.parts[pt.id] = Object.assign({}, pt, { nextDelivery: p.t + pt.delivery_every_min * 60 });
+    p.shiftStart = shiftStart(p, p.t);
+    for (const st of Object.values(p.stations)) {
+      st.health = uniform(p, 0.45, 1.0);
+      st.sinceMaint = (1 - st.health) * st.mtbf;
+    }
+    if (warmupH) { run(p, warmupH * 3600 + p.dt); p.events = []; }
+    return p;
+  }
+
+  function shiftStart(p, t) { return Math.floor((t - SHIFT_OFFSET) / p.shiftLen) * p.shiftLen + SHIFT_OFFSET; }
+  function shiftNo(p) { return Math.floor((((p.t - SHIFT_OFFSET) % 86400) + 86400) % 86400 / p.shiftLen) + 1; }
+  function emit(p, kind, station, params) { p.events.push({ t: p.t, kind, station, params: params || {} }); }
+  const wip = (st) => st.buffer.length + st.units.filter((u) => u.car).length;
+
+  function newCar(p) {
+    p.carSeq += 1;
+    const x = rand(p);
+    let acc = 0, model = p.cfg.models[p.cfg.models.length - 1].id;
+    for (const m of p.cfg.models) { acc += m.mix; if (x <= acc) { model = m.id; break; } }
+    return { id: p.carSeq, model, defects: [], reworked: false, inspected: false };
+  }
+
+  function hazard(st) { return (1 / st.mtbf) * 0.05 * Math.exp(6 * (1 - st.health)); }
+
+  function updateSensors(p, st, load) {
+    const b = st.baseline, d = 1 - st.health;
+    const vib = b.vibration * (1 + 1.1 * d ** 1.5 + gauss(p, 0, 0.05)) * (0.6 + 0.4 * load);
+    const temp = b.temperature * (1 + 0.18 * d ** 1.5 + gauss(p, 0, 0.015));
+    const cur = b.current * (0.55 + 0.45 * load) * (1 + 0.3 * d ** 2 + gauss(p, 0, 0.03));
+    st.sensors = { vibration: r(vib, 3), temperature: r(temp, 2), current: r(cur, 2) };
+  }
+
+  function startDown(p, st, reason, minutes) {
+    st.state = reason === "maintenance" ? "maintenance" : "down";
+    st.repairLeft = minutes * 60;
+    if (reason === "maintenance") p.maintLog.push({ t: p.t, station: st.id, minutes });
+    else { st.failures += 1; p.downtimeLog.push({ t: p.t, station: st.id, minutes, reason }); }
+    emit(p, "down", st.id, { reason, minutes: Math.round(minutes) });
+  }
+  function forceFailure(p, sid, minutes) {
+    const st = p.stations[sid];
+    if (st.state === "down" || st.state === "maintenance") return;
+    startDown(p, st, "breakdown", minutes || uniform(p, st.mttr[0], st.mttr[1]));
+  }
+  function scheduleMaintenance(p, sid, minutes = 25) {
+    const st = p.stations[sid];
+    if (st.state === "down" || st.state === "maintenance") return false;
+    startDown(p, st, "maintenance", minutes);
+    return true;
+  }
+  function blockSupply(p, part, hours) { p.supplyBlock[part] = p.t + hours * 3600; emit(p, "supply_delay", null, { part, hours }); }
+
+  function step(p) {
+    const dt = p.dt;
+    for (const [pid, pt] of Object.entries(p.parts)) {
+      if (p.t >= pt.nextDelivery) {
+        pt.nextDelivery += pt.delivery_every_min * 60;
+        if ((p.supplyBlock[pid] || 0) > p.t) { emit(p, "delivery_missed", null, { part: pid }); continue; }
+        pt.stock = Math.min(pt.max, pt.stock + pt.delivery_qty);
+      }
+    }
+    const w1 = p.stations.W1;
+    if (w1.bufferCap - w1.buffer.length > 0 && w1.buffer.length < 2) w1.buffer.push(newCar(p));
+    for (let i = ORDER.length - 1; i >= 0; i--) stepStation(p, p.stations[ORDER[i]], dt);
+    const s = shiftStart(p, p.t);
+    if (s !== p.shiftStart) {
+      emit(p, "shift_end", null, { produced: p.producedShift, plan: p.plan });
+      p.shiftStart = s; p.producedShift = 0; p.firstOk = p.firstInspected = 0; p.defectsFound = {};
+      for (const st of Object.values(p.stations)) { st.tState = newTState(); st.done = st.good = st.failures = 0; st.busy = 0; }
+    }
+    p.minuteAcc += dt;
+    if (p.minuteAcc >= 60) { p.minuteAcc -= 60; sampleMinute(p); }
+    p.t += dt;
+  }
+
+  function route(p, st, car) {
+    if (st.id === "Q3") return car.defects.length ? p.stations.RW : p.stations.L1;
+    if (st.id === "RW") return p.stations.Q3;
+    const i = FLOW.indexOf(st.id);
+    return i >= 0 && i < FLOW.length - 1 ? p.stations[FLOW[i + 1]] : null;
+  }
+
+  function finishJob(p, st, u) {
+    const car = u.car, nxt = route(p, st, car);
+    if (nxt && nxt.bufferCap - nxt.buffer.length <= 0) return false;
+    st.done += 1;
+    let newDefect = false;
+    if (st.defectRate > 0) {
+      const pr = st.defectRate * (1 + 3 * (1 - st.health)) * st.defectMult;
+      if (rand(p) < pr) { car.defects.push((DEFECT_TYPES[st.type] || "other") + "@" + st.id); newDefect = true; }
+    }
+    if (!newDefect) st.good += 1;
+    if (st.id === "Q3") inspect(p, car);
+    if (st.id === "RW") { car.defects = []; car.reworked = true; }
+    st.cycleHist.push(u.cycle); if (st.cycleHist.length > 20) st.cycleHist.shift();
+    if (nxt) nxt.buffer.push(car);
+    u.car = null;
+    return true;
+  }
+
+  function inspect(p, car) {
+    const first = !car.inspected;
+    car.inspected = true;
+    const detected = car.defects.filter(() => rand(p) < 0.95);
+    if (first) { p.firstInspected += 1; if (!detected.length && !car.reworked) p.firstOk += 1; }
+    for (const d of detected) {
+      const [key, sid] = d.split("@");
+      p.defectsFound[key] = (p.defectsFound[key] || 0) + 1;
+      emit(p, "defect", sid, { defect: key, car: car.id });
+    }
+    if (detected.length) car.defects = detected;
+    else { car.defects = []; p.producedShift += 1; p.producedTotal += 1; p.completions.push(p.t); }
+  }
+
+  function stepStation(p, st, dt) {
+    st.sinceMaint += dt;
+    if (st.defectMult !== 1 && st.defectUntil && p.t > st.defectUntil) { st.defectMult = 1; st.defectUntil = 0; }
+    if (st.state === "down" || st.state === "maintenance") {
+      st.repairLeft -= dt; st.tState[st.state] += dt; st.activePeriod += dt;
+      updateSensors(p, st, 0);
+      if (st.repairLeft <= 0) {
+        const was = st.state;
+        st.health = was === "maintenance" ? 1 : uniform(p, 0.9, 1.0);
+        st.sinceMaint = 0; st.state = "starved";
+        emit(p, "up", st.id, { after: was });
+      }
+      return;
+    }
+    let working = 0, blocked = 0, noParts = 0;
+    for (const u of st.units) {
+      if (u.car && u.remaining <= 0) { if (!finishJob(p, st, u)) { blocked += 1; continue; } }
+      if (!u.car && st.buffer.length) {
+        if (st.part) {
+          const pt = p.parts[st.part];
+          if (pt.stock <= 0) { noParts += 1; continue; }
+          pt.stock -= 1;
+        }
+        u.car = st.buffer.shift();
+        u.cycle = st.cycle * (1 + 0.15 * (1 - st.health) ** 2) * uniform(p, 0.97, 1.05);
+        u.remaining = u.cycle;
+      }
+      if (u.car) { u.remaining -= dt; working += 1; }
+    }
+    if (st.sink) for (const u of st.units) if (u.car && u.remaining <= 0) u.car = null;
+    const idle = st.units.length - working - blocked - noParts;
+    let state;
+    if (working && (idle === 0 || st.sink)) state = "working";
+    else if (working && idle > 0 && !st.buffer.length) state = "starved";
+    else if (blocked) state = "blocked";
+    else if (noParts) state = "no_parts";
+    else state = "starved";
+    if (state === "no_parts" && st.state !== "no_parts") emit(p, "no_parts", st.id, { part: st.part });
+    st.state = state;
+    st.tState[state] += dt;
+    st.activePeriod = ACTIVE.has(state) ? st.activePeriod + dt : 0;
+    const load = working / st.units.length;
+    st.busy += dt * load;
+    st.health = Math.max(0, st.health - dt * load * st.wearMult / (st.mtbf * 1.25));
+    updateSensors(p, st, load);
+    if (working && rand(p) < 1 - Math.exp(-hazard(st) * dt * load)) startDown(p, st, "breakdown", uniform(p, st.mttr[0], st.mttr[1]));
+  }
+
+  function momentaryBottleneck(p) {
+    let best = null;
+    for (const st of Object.values(p.stations)) {
+      if (st.id === "L1" || st.id === "RW") continue;
+      if (!best || st.activePeriod > best.activePeriod) best = st;
+    }
+    return best.id;
+  }
+
+  function sampleMinute(p) {
+    while (p.completions.length && p.completions[0] < p.t - 3600) p.completions.shift();
+    for (const st of Object.values(p.stations)) {
+      st.sensorHist.push([st.sensors.vibration, st.sensors.temperature, st.sensors.current]);
+      if (st.sensorHist.length > 60) st.sensorHist.shift();
+    }
+    const bn = momentaryBottleneck(p);
+    p.bnHist.push(bn); if (p.bnHist.length > 720) p.bnHist.shift();
+    if (p.noHistory) return;
+    const k = kpis(p);
+    p.history.push({ t: p.t, jph: k.jph, produced: p.producedShift, plan_to_date: k.plan_to_date, oee: k.oee, fpy: k.fpy, wip: k.wip, bottleneck: bn });
+    if (p.history.length > 1440) p.history.shift();
+  }
+
+  function stationKpis(st) {
+    const tot = Object.values(st.tState).reduce((a, b) => a + b, 0) || 1;
+    const down = st.tState.down + st.tState.maintenance;
+    const avail = 1 - down / tot, op = Math.max(tot - down, 1);
+    const perf = Math.min(1, st.done * st.cycle / (op * st.units.length));
+    const qual = st.done ? st.good / st.done : 1;
+    return {
+      availability: r(avail, 3), performance: r(perf, 3), quality: r(qual, 3), oee: r(avail * perf * qual, 3),
+      utilization: r(st.busy / tot, 3), time: Object.fromEntries(Object.entries(st.tState).map(([k, v]) => [k, r(v / 60, 1)])),
+      done: st.done, failures: st.failures,
+    };
+  }
+
+  function idealCycle(p) {
+    let m = 0;
+    for (const id of FLOW) { const s = p.stations[id]; if (!s.sink) m = Math.max(m, s.cycle / s.units.length); }
+    return m;
+  }
+
+  function kpis(p) {
+    const elapsed = Math.max(p.t - p.shiftStart, 1), ptd = p.plan * elapsed / p.shiftLen;
+    const sts = Object.values(p.stations);
+    return {
+      produced: p.producedShift, plan: p.plan, plan_to_date: r(ptd, 1),
+      attainment: ptd >= 5 ? r(p.producedShift / ptd, 3) : null,
+      jph: p.completions.length, oee: r(Math.min(1, p.completions.length * idealCycle(p) / 3600), 3),
+      fpy: p.firstInspected ? r(p.firstOk / p.firstInspected, 3) : 1,
+      wip: sts.filter((s) => !s.sink).reduce((a, s) => a + wip(s), 0),
+      downtime_min: r(sts.reduce((a, s) => a + s.tState.down, 0) / 60, 1),
+      maintenance_min: r(sts.reduce((a, s) => a + s.tState.maintenance, 0) / 60, 1),
+      defects: Object.assign({}, p.defectsFound), rework_queue: wip(p.stations.RW), shift: shiftNo(p),
+      shift_elapsed: r(elapsed / p.shiftLen, 3),
+    };
+  }
+
+  function run(p, seconds) { const n = Math.floor(seconds / p.dt); for (let i = 0; i < n; i++) step(p); }
+
+  // ---------------------------------------------------------------- AI (logistic + ridge on quadratic features)
+  const FEATURE_LABELS = ["vibration", "temperature", "current", "vibration", "temperature", "vibration_trend", "temperature_trend", "cycle_drift", "since_maintenance"];
+  function slope(ys) {
+    const n = ys.length, mx = (n - 1) / 2, my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    ys.forEach((y, i) => { num += (i - mx) * (y - my); den += (i - mx) ** 2; });
+    return den ? num / den : 0;
+  }
+  function features(st) {
+    const b = st.baseline, h = st.sensorHist;
+    let vib15, temp15;
+    if (h.length) {
+      const last = h.slice(-15);
+      vib15 = last.reduce((a, x) => a + x[0], 0) / last.length / b.vibration;
+      temp15 = last.reduce((a, x) => a + x[1], 0) / last.length / b.temperature;
+    } else { vib15 = st.sensors.vibration / b.vibration; temp15 = st.sensors.temperature / b.temperature; }
+    const vs = h.length >= 20 ? slope(h.map((x) => x[0] / b.vibration)) * 60 : 0;
+    const ts = h.length >= 20 ? slope(h.map((x) => x[1] / b.temperature)) * 60 : 0;
+    const drift = st.cycleHist.length ? st.cycleHist.reduce((a, c) => a + c, 0) / st.cycleHist.length / st.cycle : 1;
+    return [st.sensors.vibration / b.vibration, st.sensors.temperature / b.temperature, st.sensors.current / b.current, vib15, temp15, vs, ts, drift, st.sinceMaint / st.mtbf];
+  }
+  function assess(M, p) {
+    const out = {};
+    for (const st of Object.values(p.stations)) {
+      if (st.sink) continue;
+      const x = features(st);
+      const z = x.map((v, i) => (v - M.mean[i]) / M.scale[i]);
+      const zz = z.concat(z.map((v) => v * v));
+      const lin = zz.reduce((a, v, i) => a + v * M.clf_w[i], M.clf_b);
+      let risk = 1 / (1 + Math.exp(-lin));
+      const health = Math.min(1, Math.max(0, zz.reduce((a, v, i) => a + v * M.reg_w[i], M.reg_b)));
+      if (st.state === "down" || st.state === "maintenance") risk = 0;
+      const dev = x.map((v, i) => (v - M.healthy[i]) / Math.max(Math.abs(M.healthy[i]), 1e-3));
+      let drivers = [3, 4, 2, 7].map((j) => [FEATURE_LABELS[j], dev[j]]).sort((a, b) => b[1] - a[1]).slice(0, 2);
+      if (x[8] > 0.8) drivers = [["since_maintenance", x[8]]].concat(drivers.slice(0, 1));
+      out[st.id] = {
+        risk: r(risk, 3), health: r(health, 3), level: risk >= 0.35 ? "high" : risk >= 0.18 ? "medium" : "low",
+        drivers: drivers.map(([f, v]) => ({ feature: f, deviation: r(v, 2) })),
+      };
+    }
+    return out;
+  }
+
+  function clone(p, a, seed) {
+    const keep = { history: p.history, events: p.events };
+    p.history = []; p.events = [];
+    const c = structuredClone(p);
+    Object.assign(p, keep);
+    c.seed = seed; c.noHistory = true; c.bnHist = [];
+    for (const [sid, x] of Object.entries(a)) c.stations[sid].health = x.health; // the twin only knows the AI estimate
+    return c;
+  }
+
+  function forecast(p, a, runs = 16, horizonH = null, action = null) {
+    if (horizonH == null) horizonH = Math.max(0.5, (p.shiftStart + p.shiftLen - p.t) / 3600);
+    const produced = [], down = {}, bns = {};
+    for (let i = 0; i < runs; i++) {
+      const c = clone(p, a, 1000 + i * 7919);
+      if (action) scheduleMaintenance(c, action);
+      const s0 = c.producedTotal, n0 = c.downtimeLog.length;
+      run(c, horizonH * 3600);
+      produced.push(c.producedTotal - s0);
+      for (const d of c.downtimeLog.slice(n0)) down[d.station] = (down[d.station] || 0) + d.minutes / runs;
+      for (const b of c.bnHist) bns[b] = (bns[b] || 0) + 1;
+    }
+    const sorted = produced.slice().sort((x, y) => x - y);
+    const q = (f) => sorted[Math.min(sorted.length - 1, Math.floor(f * sorted.length))];
+    const need = Math.max(0, p.plan - p.producedShift);
+    const mean = produced.reduce((x, y) => x + y, 0) / runs;
+    const totBn = Object.values(bns).reduce((x, y) => x + y, 0) || 1;
+    const top = (o, n) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, n);
+    return {
+      horizon_h: r(horizonH, 2), runs, expected_more: r(mean, 1), p10: q(0.1), p50: q(0.5), p90: q(0.9),
+      expected_shift_total: r(p.producedShift + mean, 1), plan: p.plan,
+      p_plan: r(produced.filter((x) => x >= need).length / runs, 2),
+      expected_downtime: Object.fromEntries(top(down, 5).map(([k, v]) => [k, r(v, 1)])),
+      bottleneck_share: Object.fromEntries(top(bns, 5).map(([k, v]) => [k, r(v / totBn, 3)])),
+    };
+  }
+
+  function recommend(p, a) {
+    const cands = Object.entries(a).filter(([sid, x]) => x.risk >= 0.15 && !["down", "maintenance"].includes(p.stations[sid].state))
+      .sort((x, y) => y[1].risk - x[1].risk).slice(0, 3);
+    if (!cands.length) return [];
+    const base = forecast(p, a, 8, 4);
+    return cands.map(([sid, x]) => {
+      const alt = forecast(p, a, 8, 4, sid);
+      const gain = alt.expected_more - base.expected_more;
+      const saved = (base.expected_downtime[sid] || 0) - (alt.expected_downtime[sid] || 0);
+      return { station: sid, action: "maintenance", risk: x.risk, gain_cars: r(gain, 1), downtime_saved_min: r(saved, 1),
+        verdict: gain > 0.3 || (saved > 15 && gain > -0.5) ? "do_now" : gain > -1 ? "plan_break" : "monitor" };
+    }).sort((x, y) => y.gain_cars - x.gain_cars);
+  }
+
+  // ---------------------------------------------------------------- incidents
+  function createIncidents() { return { items: [], seq: 1, defects: [] }; }
+  function findOpen(im, type, station = null, part = null) {
+    return im.items.find((i) => i.status !== "closed" && i.type === type && i.station === station && (i.params.part ?? null) === part);
+  }
+  function openInc(im, p, type, severity, station, params) {
+    const f = findOpen(im, type, station, params.part ?? null);
+    if (f) { Object.assign(f.params, params); return f; }
+    const inc = { id: im.seq++, t: p.t, type, severity, station, params, status: "open", closed_t: null };
+    im.items.push(inc); if (im.items.length > 300) im.items.shift();
+    return inc;
+  }
+  function closeInc(im, p, type, station = null, part = null) {
+    const f = findOpen(im, type, station, part);
+    if (f) { f.status = "closed"; f.closed_t = p.t; }
+  }
+  function updateIncidents(im, p, a, f) {
+    for (const e of p.events) {
+      const { kind: k, station: sid, params: pr } = e;
+      if (k === "down") {
+        if (pr.reason === "maintenance") openInc(im, p, "maintenance", "info", sid, { minutes: pr.minutes });
+        else openInc(im, p, "breakdown", "critical", sid, { minutes: pr.minutes });
+        closeInc(im, p, "failure_risk", sid);
+      } else if (k === "up") closeInc(im, p, pr.after === "down" ? "breakdown" : "maintenance", sid);
+      else if (k === "no_parts") openInc(im, p, "no_parts", "critical", sid, { part: pr.part });
+      else if (k === "delivery_missed") openInc(im, p, "delivery_missed", "warning", null, { part: pr.part });
+      else if (k === "defect") im.defects.push([e.t, pr.defect, sid]);
+      else if (k === "shift_end") {
+        const inc = openInc(im, p, "shift_report", pr.produced >= pr.plan ? "info" : "warning", null, { produced: pr.produced, plan: pr.plan });
+        inc.status = "closed"; inc.closed_t = p.t;
+      }
+    }
+    p.events = [];
+    for (const st of Object.values(p.stations)) if (st.state !== "no_parts") closeInc(im, p, "no_parts", st.id, st.part);
+    for (const [pid, pt] of Object.entries(p.parts)) {
+      if (pt.stock <= 8) openInc(im, p, "low_stock", "warning", null, { part: pid, stock: pt.stock });
+      else if (pt.stock >= 16) closeInc(im, p, "low_stock", null, pid);
+      if (pt.stock >= 16) closeInc(im, p, "delivery_missed", null, pid);
+    }
+    while (im.defects.length && im.defects[0][0] < p.t - 3600) im.defects.shift();
+    const counts = {};
+    for (const [, d, sid] of im.defects) counts[d + "|" + sid] = (counts[d + "|" + sid] || 0) + 1;
+    for (const [key, n] of Object.entries(counts)) {
+      const [d, sid] = key.split("|");
+      if (n >= 3) openInc(im, p, "quality_spike", "warning", sid, { defect: d, count: n });
+    }
+    for (const inc of im.items) {
+      if (inc.type === "quality_spike" && inc.status !== "closed" && (counts[inc.params.defect + "|" + inc.station] || 0) < 2) { inc.status = "closed"; inc.closed_t = p.t; }
+    }
+    if (a) for (const [sid, x] of Object.entries(a)) {
+      if (x.risk >= 0.35) openInc(im, p, "failure_risk", "warning", sid, { risk: x.risk, health: x.health, drivers: x.drivers.map((d) => d.feature) });
+      else if (x.risk < 0.2) closeInc(im, p, "failure_risk", sid);
+    }
+    if (f) {
+      if (f.p_plan < 0.5 && kpis(p).shift_elapsed > 0.1) openInc(im, p, "plan_risk", "warning", null, { p_plan: f.p_plan, expected: f.expected_shift_total, plan: f.plan });
+      else if (f.p_plan >= 0.6) closeInc(im, p, "plan_risk");
+    }
+  }
+  function incidentSnapshot(im) {
+    const sev = { critical: 0, warning: 1, info: 2 };
+    const active = im.items.filter((i) => i.status !== "closed").sort((a, b) => sev[a.severity] - sev[b.severity] || b.t - a.t);
+    const closed = im.items.filter((i) => i.status === "closed").slice(-60).reverse();
+    return active.concat(closed);
+  }
+
+  // ---------------------------------------------------------------- the twin (same surface as the REST API)
+  const SPEEDS = { 1: 0.1, 60: 6, 300: 30, 900: 90 };
+  class Twin {
+    constructor(cfg, model, effect) { this.cfg = cfg; this.M = model; this.effect = effect; this.reset(); }
+    reset() {
+      this.p = createPlant(this.cfg, 7);
+      this.im = createIncidents();
+      this.speed = "60"; this.paused = false; this.acc = 0;
+      for (const st of Object.values(this.p.stations)) if (st.state === "down" || st.state === "maintenance")
+        emit(this.p, "down", st.id, { reason: st.state === "down" ? "breakdown" : "maintenance", minutes: Math.round(st.repairLeft / 60) });
+      this.a = assess(this.M, this.p);
+      this.f = null; this.recs = []; this.fAt = 0;
+    }
+    advance(realDt) {
+      if (this.paused) return;
+      this.acc += SPEEDS[this.speed] * realDt;
+      const n = Math.floor(this.acc); this.acc -= n;
+      for (let i = 0; i < n; i++) step(this.p);
+      const fresh = assess(this.M, this.p);
+      for (const [sid, x] of Object.entries(fresh)) {
+        const prev = this.a[sid];
+        if (prev && x.risk > 0) { x.risk = r(0.8 * prev.risk + 0.2 * x.risk, 3); x.level = x.risk >= 0.35 ? "high" : x.risk >= 0.18 ? "medium" : "low"; }
+      }
+      this.a = fresh;
+      updateIncidents(this.im, this.p, this.a, this.f);
+      const now = performance.now();
+      if (now - this.fAt > 12000) { this.fAt = now; this.f = forecast(this.p, this.a); this.recs = recommend(this.p, this.a); }
+    }
+    snapshot() {
+      const p = this.p, bh = p.bnHist.slice(-120), share = {};
+      for (const b of bh) share[b] = (share[b] || 0) + 1;
+      for (const k in share) share[k] = r(share[k] / bh.length, 3);
+      const t = p.t;
+      return {
+        clock: { t, day: Math.floor(t / 86400) + 1, hh: Math.floor(t % 86400 / 3600), mm: Math.floor(t % 3600 / 60) },
+        speed: this.speed, paused: this.paused, kpi: kpis(p),
+        stations: ORDER.map((id) => {
+          const st = p.stations[id];
+          return { id, shop: st.shop, type: st.type, state: st.state, x: st.x, y: st.y, units: st.units.length,
+            busy: st.units.filter((u) => u.car).length, buffer: st.buffer.length, buffer_cap: st.bufferCap, sensors: st.sensors,
+            kpi: stationKpis(st), cycle: st.cycle, down_left_min: ["down", "maintenance"].includes(st.state) ? Math.round(st.repairLeft / 60) : 0,
+            ai: this.a[id] || null };
+        }),
+        parts: Object.entries(p.parts).map(([k, v]) => ({ id: k, stock: v.stock, max: v.max, blocked: (p.supplyBlock[k] || 0) > p.t, next_delivery_min: Math.round((v.nextDelivery - p.t) / 60) })),
+        bottleneck: { now: momentaryBottleneck(p), share: Object.fromEntries(Object.entries(share).sort((a, b) => b[1] - a[1])) },
+        incidents: incidentSnapshot(this.im), forecast: this.f, recommendations: this.recs, shops: this.cfg.shops,
+      };
+    }
+    history(minutes = 480) { return this.p.history.slice(-minutes); }
+    station(sid) {
+      const st = this.p.stations[sid];
+      return { id: sid, sensor_hist: st.sensorHist, baseline: st.baseline, ai: this.a[sid], kpi: stationKpis(st) };
+    }
+    metrics() { return { model: this.M.metrics, effect: this.effect }; }
+    exportCsv() {
+      const h = this.p.history; if (!h.length) return "";
+      const keys = Object.keys(h[0]);
+      return keys.join(",") + "\n" + h.map((row) => keys.map((k) => row[k]).join(",")).join("\n");
+    }
+    post(path, body) {
+      const p = this.p;
+      if (path === "/api/speed") {
+        if (body.value === "pause") this.paused = !this.paused; else { this.speed = body.value; this.paused = false; }
+      } else if (path.startsWith("/api/scenario/")) {
+        const name = path.split("/").pop();
+        if (name === "reset") this.reset();
+        else if (name === "robot_failure") forceFailure(p, "W3", 90);
+        else if (name === "supply_delay") { blockSupply(p, "engine", 4); p.parts.engine.stock = Math.min(p.parts.engine.stock, 10); }
+        else if (name === "paint_quality") { p.stations.P2.defectMult = 6; p.stations.P2.defectUntil = p.t + 7200; }
+        else if (name === "wear") { p.stations.A2.health = 0.3; p.stations.A2.sinceMaint = 1.1 * p.stations.A2.mtbf; }
+        this.fAt = 0;
+      } else if (path.startsWith("/api/maintenance/")) {
+        const ok = scheduleMaintenance(p, path.split("/").pop()); this.fAt = 0; return { ok };
+      } else if (path.startsWith("/api/incidents/")) {
+        const id = +path.split("/")[3], inc = this.im.items.find((i) => i.id === id && i.status === "open");
+        if (inc) inc.status = "ack";
+      }
+      return { ok: true };
+    }
+  }
+
+  window.LocalTwin = Twin;
+})();
+
+</script>
+<script>
+/* ALLUR Digital Twin — dashboard client. Vanilla JS + Chart.js, data over WebSocket. */
+(() => {
+  const FLOW = ["W1", "W2", "W3", "W4", "P1", "P2", "P3", "A1", "A2", "A3", "Q1", "Q2", "Q3", "L1"];
+  const STATES = ["working", "starved", "blocked", "down", "maintenance", "no_parts"];
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const COLORS = Object.fromEntries(STATES.map((s) => [s, css("--" + s)]));
+  const RISK = { low: css("--risk-low"), medium: css("--risk-medium"), high: css("--risk-high") };
+
+  let lang = localStorageGet("lang") || "ru";
+  let S = null;              // latest snapshot
+  let history = [];
+  let metrics = null;
+  let selected = null;
+  const charts = {};
+
+  function localStorageGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+  function localStorageSet(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } }
+
+  // ------------------------------------------------------------------ i18n
+  function t(key, params) {
+    let s = (I18N[lang] && I18N[lang][key]) ?? I18N.ru[key] ?? key;
+    if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll("{" + k + "}", v);
+    return s;
+  }
+  const stName = (id) => id ? `${id} ${t("st_" + id)}` : "";
+  const fmtTime = (sec) => {
+    const d = Math.floor(sec / 86400) + 1, h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+    return `${t("day")} ${d}, ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+  const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+  const num = (x) => Number(x).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU");
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+    document.querySelectorAll(".lang button").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
+    document.getElementById("legend").innerHTML = STATES.map((s) => `<span><i style="background:${COLORS[s]}"></i>${t("s_" + s)}</span>`).join("");
+    buildMap();
+    Object.values(charts).forEach((c) => c.destroy());
+    for (const k in charts) delete charts[k];
+    if (S) render();
+    renderMetrics();
+  }
+
+  // ------------------------------------------------------------------ connection
+  // Static mode: the whole twin runs in the browser (engine.js), no server needed.
+  const LOCAL = window.LOCAL_DATA && window.LocalTwin ? new LocalTwin(LOCAL_DATA.config, LOCAL_DATA.model, LOCAL_DATA.effect) : null;
+  function connectLocal() {
+    const dot = document.getElementById("conn");
+    dot.classList.add("on"); dot.title = t("live");
+    let last = performance.now(), lastRender = 0;
+    setInterval(() => {
+      const now = performance.now();
+      LOCAL.advance((now - last) / 1000); last = now;
+      if (now - lastRender > 950) { lastRender = now; S = LOCAL.snapshot(); render(); }
+    }, 200);
+    S = LOCAL.snapshot(); render();
+  }
+  function connect() {
+    if (LOCAL) return connectLocal();
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    const dot = document.getElementById("conn");
+    ws.onopen = () => { dot.classList.add("on"); dot.title = t("live"); };
+    ws.onclose = () => { dot.classList.remove("on"); dot.title = t("offline"); setTimeout(connect, 1500); poll(); };
+    ws.onmessage = (e) => { S = JSON.parse(e.data); render(); };
+  }
+  // fallback when WebSockets are blocked (corporate proxies): poll the REST snapshot
+  let polling = false;
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    while (!document.getElementById("conn").classList.contains("on")) {
+      try { S = await (await fetch("/api/state")).json(); render(); } catch { /* server down */ }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    polling = false;
+  }
+  async function post(url, body) {
+    if (LOCAL) { const res = LOCAL.post(url, body); S = LOCAL.snapshot(); render(); return res; }
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    return r.json();
+  }
+  async function refreshHistory() {
+    if (LOCAL) { history = LOCAL.history(480); return; }
+    try { history = await (await fetch("/api/history?minutes=480")).json(); } catch { /* retry later */ }
+  }
+  async function loadMetrics() {
+    if (LOCAL) { metrics = LOCAL.metrics(); renderMetrics(); return; }
+    try { metrics = await (await fetch("/api/metrics")).json(); renderMetrics(); } catch { /* ignore */ }
+  }
+
+  // ------------------------------------------------------------------ KPIs
+  function renderKpis() {
+    const k = S.kpi;
+    const attain = k.attainment;
+    const cls = (v, g, w) => (v >= g ? "good" : v >= w ? "warn" : "bad");
+    const tiles = [
+      { label: t("k_produced"), value: `${k.produced}<small> / ${k.plan} ${t("k_plan")}</small>`, bar: k.produced / k.plan },
+      { label: t("k_attain"), value: attain == null ? "—" : pct(attain), cls: attain == null ? "" : cls(attain, 1, 0.92) },
+      { label: t("k_jph"), value: k.jph },
+      { label: t("k_oee"), value: pct(k.oee), cls: cls(k.oee, 0.85, 0.7) },
+      { label: t("k_fpy"), value: pct(k.fpy, 1), cls: cls(k.fpy, 0.9, 0.8) },
+      { label: t("k_downtime"), value: Math.round(k.downtime_min), cls: k.downtime_min > 60 ? "bad" : k.downtime_min > 20 ? "warn" : "good" },
+      { label: t("k_wip"), value: `${k.wip}<small> · ${k.rework_queue} ${t("k_rework")}</small>` },
+    ];
+    document.getElementById("kpis").innerHTML = tiles.map((x) =>
+      `<div class="kpi ${x.cls || ""}"><div class="label">${x.label}</div><div class="value">${x.value}</div>${x.bar !== undefined ? `<div class="bar"><i style="width:${Math.min(100, x.bar * 100)}%"></i></div>` : ""}</div>`).join("");
+    const c = S.clock;
+    document.getElementById("clock").textContent = `${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`;
+    document.getElementById("clock-sub").textContent = `${t("day")} ${c.day} · ${t("shift")} ${k.shift}`;
+    document.getElementById("speed").value = S.speed;
+    document.getElementById("pause").classList.toggle("primary", S.paused);
+  }
+
+  // ------------------------------------------------------------------ map
+  const SW = 64, SH = 56;
+  function buildMap() {
+    const svg = document.getElementById("map");
+    if (!S) { svg.innerHTML = ""; return; }
+    const st = Object.fromEntries(S.stations.map((s) => [s.id, s]));
+    let h = "";
+    for (const sh of S.shops) {
+      h += `<g class="shop"><rect x="${sh.x}" y="${sh.y}" width="${sh.w}" height="${sh.h}" rx="14"/><text x="${sh.x + 12}" y="${sh.y + 22}">${t("shop_" + sh.id)}</text></g>`;
+    }
+    // flow arrows
+    const path = [];
+    for (let i = 0; i < FLOW.length - 1; i++) {
+      const a = st[FLOW[i]], b = st[FLOW[i + 1]];
+      let d;
+      if (a.id === "A3") d = `M${a.x} ${a.y + SH / 2} L${b.x} ${b.y - SH / 2}`;
+      else if (a.id === "Q3") d = `M${a.x - SW / 2} ${a.y} L${b.x + SW / 2 + 6} ${b.y}`;
+      else if (a.y === b.y) d = `M${a.x + (a.x < b.x ? SW / 2 : -SW / 2)} ${a.y} L${b.x + (a.x < b.x ? -SW / 2 : SW / 2)} ${b.y}`;
+      else d = `M${a.x} ${a.y} L${b.x} ${b.y}`;
+      path.push(`<path class="flow" data-from="${a.id}" d="${d}" marker-end="url(#arr)"/>`);
+    }
+    const q3 = st.Q3, rw = st.RW;
+    path.push(`<path class="flow" data-from="Q3" d="M${q3.x - 12} ${q3.y + SH / 2} L${rw.x - 12} ${rw.y - SH / 2}" marker-end="url(#arr)"/>`);
+    path.push(`<path class="flow" data-from="RW" d="M${rw.x + 12} ${rw.y - SH / 2} L${q3.x + 12} ${q3.y + SH / 2}" marker-end="url(#arr)"/>`);
+    h = `<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3b5587"/></marker></defs>` + h + path.join("");
+    // warehouse block
+    h += `<g id="stock-svg" class="stock-svg"></g>`;
+    for (const s of S.stations) {
+      h += `<g class="station" data-id="${s.id}" transform="translate(${s.x - SW / 2},${s.y - SH / 2})">
+        <rect class="body" width="${SW}" height="${SH}" rx="9"/>
+        <rect class="bn hidden" x="-5" y="-5" width="${SW + 10}" height="${SH + 10}" rx="12"/>
+        <text x="${SW / 2}" y="24">${s.id}</text>
+        <text class="sub" x="${SW / 2}" y="42" style="font-size:10px;font-weight:600"></text>
+        <g class="buf" transform="translate(0,${SH + 5})"></g>
+        <g class="risk-dot hidden" transform="translate(${SW - 2},2)"><circle r="11"/><text y="3"></text></g>
+      </g>`;
+    }
+    svg.innerHTML = h;
+    svg.querySelectorAll(".station").forEach((g) => g.addEventListener("click", () => openStation(g.dataset.id)));
+  }
+
+  function renderMap() {
+    const svg = document.getElementById("map");
+    if (!svg.querySelector(".station")) buildMap();
+    for (const s of S.stations) {
+      const g = svg.querySelector(`.station[data-id="${s.id}"]`);
+      if (!g) continue;
+      g.classList.toggle("down", s.state === "down");
+      const body = g.querySelector("rect.body");
+      body.setAttribute("fill", COLORS[s.state]);
+      body.setAttribute("stroke", selected === s.id ? "#fff" : "rgba(0,0,0,.25)");
+      g.querySelector("text.sub").textContent = s.state === "down" || s.state === "maintenance" ? `${s.down_left_min} ${t("minutes")}` : `${s.busy}/${s.units}`;
+      g.querySelector(".bn").classList.toggle("hidden", S.bottleneck.now !== s.id);
+      // input buffer cells
+      const cells = Math.min(s.buffer_cap, 10), w = SW / cells;
+      g.querySelector(".buf").innerHTML = Array.from({ length: cells }, (_, i) =>
+        `<rect x="${i * w + 1}" width="${w - 2}" height="5" rx="1" class="${i < s.buffer ? "f" : ""}"/>`).join("");
+      const rd = g.querySelector(".risk-dot");
+      if (s.ai && s.ai.level !== "low") {
+        rd.classList.remove("hidden");
+        rd.querySelector("circle").setAttribute("fill", RISK[s.ai.level]);
+        rd.querySelector("text").textContent = Math.round(s.ai.risk * 100);
+      } else rd.classList.add("hidden");
+      const title = `${stName(s.id)} — ${t("s_" + s.state)}`;
+      let tt = g.querySelector("title");
+      if (!tt) { tt = document.createElementNS("http://www.w3.org/2000/svg", "title"); g.appendChild(tt); }
+      tt.textContent = title;
+    }
+    svg.querySelectorAll(".flow").forEach((p) => {
+      const s = S.stations.find((x) => x.id === p.dataset.from);
+      p.classList.toggle("run", s && s.state === "working");
+    });
+    // stock bars inside the logistics shop
+    const shop = S.shops.find((x) => x.id === "logistics");
+    let h = `<text x="${shop.x + 14}" y="${shop.y + 50}" style="font-weight:600">${t("stock_title")}</text>`;
+    S.parts.forEach((p, i) => {
+      const y = shop.y + 66 + i * 28, w = 160, f = p.stock / p.max;
+      const col = p.stock <= 8 ? COLORS.down : f < 0.35 ? COLORS.blocked : COLORS.working;
+      h += `<text x="${shop.x + 14}" y="${y + 10}">${t("p_" + p.id)}</text>
+            <rect x="${shop.x + 150}" y="${y}" width="${w}" height="12" rx="3" fill="#24365a"/>
+            <rect x="${shop.x + 150}" y="${y}" width="${w * f}" height="12" rx="3" fill="${col}"/>
+            <text x="${shop.x + 318}" y="${y + 10}">${p.stock}${p.blocked ? " ⚠" : ""}</text>`;
+    });
+    svg.querySelector("#stock-svg").innerHTML = h;
+    document.getElementById("bn-now").textContent = stName(S.bottleneck.now);
+  }
+
+  // ------------------------------------------------------------------ incidents
+  function incText(i) {
+    const p = Object.assign({}, i.params);
+    if (p.part) p.part = t("p_" + p.part);
+    if (p.defect) p.defect = t("d_" + p.defect);
+    if (p.risk !== undefined) p.risk = Math.round(p.risk * 100);
+    if (p.health !== undefined) p.health = Math.round(p.health * 100);
+    if (p.expected !== undefined) p.expected = Math.round(p.expected);
+    return t("i_" + i.type, Object.assign(p, { st: stName(i.station) }));
+  }
+  function renderFeed() {
+    const items = S.incidents.slice(0, 25);
+    const active = S.incidents.filter((i) => i.status === "open");
+    const badge = document.getElementById("inc-badge");
+    badge.textContent = active.length;
+    badge.classList.toggle("hidden", !active.length);
+    document.getElementById("feed").innerHTML = items.length ? items.map((i) =>
+      `<li class="${i.severity} ${i.status}"><div class="meta"><span>${fmtTime(i.t)} · ${t("sev_" + i.severity)}</span><span>${t("stat_" + i.status)}</span></div>${incText(i)}</li>`).join("")
+      : `<li class="info">${t("no_incidents")}</li>`;
+    const only = document.getElementById("only-active").checked;
+    const rows = S.incidents.filter((i) => !only || i.status !== "closed");
+    document.querySelector("#inc-table tbody").innerHTML = rows.map((i) => `<tr>
+      <td>${fmtTime(i.t)}</td>
+      <td><span class="pill" style="background:${i.severity === "critical" ? COLORS.down : i.severity === "warning" ? COLORS.blocked : css("--accent")}">${t("sev_" + i.severity)}</span></td>
+      <td>${incText(i)}</td><td>${t("stat_" + i.status)}${i.closed_t ? ` · ${fmtTime(i.closed_t)}` : ""}</td>
+      <td>${i.status === "open" ? `<button class="btn" data-ack="${i.id}">${t("ack")}</button>` : ""}</td></tr>`).join("");
+  }
+
+  // ------------------------------------------------------------------ forecast & recommendations
+  function forecastHtml(full) {
+    const f = S.forecast;
+    if (!f) return `<p class="muted">${t("calculating")}</p>`;
+    const col = f.p_plan >= 0.7 ? COLORS.working : f.p_plan >= 0.4 ? COLORS.blocked : COLORS.down;
+    const bn = Object.entries(f.bottleneck_share)[0];
+    let h = `<div class="row"><span>${t("forecast_expected")}</span><b class="big">${Math.round(f.expected_shift_total)}<small class="muted" style="font-size:14px"> / ${f.plan}</small></b></div>
+      <div class="row"><span>${t("forecast_range")}</span><b>${S.kpi.produced + f.p10} – ${S.kpi.produced + f.p90}</b></div>
+      <div class="row"><span>${t("p_plan")}</span><b style="color:${col}">${pct(f.p_plan)}</b></div>
+      <div class="prob"><i style="width:${f.p_plan * 100}%;background:${col}"></i></div>
+      <div class="row"><span>${t("predicted_bn")}</span><b>${bn ? stName(bn[0]) : "—"}</b></div>`;
+    if (full) {
+      const dt = Object.entries(f.expected_downtime);
+      h += `<div class="section"><div class="muted small" style="margin:8px 0 4px">${t("expected_downtime")}</div>` +
+        (dt.length ? dt.map(([k, v]) => `<div class="row"><span>${stName(k)}</span><b>${Math.round(v)} ${t("minutes")}</b></div>`).join("") : "—") + `</div>`;
+    }
+    return h;
+  }
+  function recsHtml() {
+    const r = S.recommendations || [];
+    if (!r.length) return `<p class="muted">${S.forecast ? t("no_recs") : t("calculating")}</p>`;
+    return r.map((x) => `<div class="rec"><div>${t("rec_line", { st: stName(x.station), verdict: t("rec_" + x.verdict), gain: (x.gain_cars >= 0 ? "+" : "") + x.gain_cars, saved: Math.max(0, Math.round(x.downtime_saved_min)) })}
+      <div class="muted small">${t("risk2h")}: ${pct(x.risk)}</div></div>
+      ${x.verdict !== "monitor" ? `<button class="btn primary" data-pm="${x.station}">${t("apply")}</button>` : ""}</div>`).join("");
+  }
+
+  // ------------------------------------------------------------------ charts
+  function chart(id, cfg) {
+    if (!window.Chart) return; // chart library unavailable: the rest of the dashboard still works
+    const base = {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: css("--muted"), boxWidth: 12 } } },
+      scales: {},
+    };
+    cfg.options = Object.assign(base, cfg.options || {});
+    for (const ax of Object.values(cfg.options.scales)) {
+      ax.ticks = Object.assign({ color: css("--muted") }, ax.ticks || {});
+      ax.grid = Object.assign({ color: "#1c2a47" }, ax.grid || {});
+    }
+    if (!charts[id]) charts[id] = new Chart(document.getElementById(id), cfg);
+    else { charts[id].data = cfg.data; charts[id].update("none"); }
+  }
+  const hhmm = (sec) => `${String(Math.floor(sec % 86400 / 3600)).padStart(2, "0")}:${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}`;
+
+  function renderExec() {
+    const shiftStart = S.clock.t - S.kpi.shift_elapsed * 8 * 3600;
+    const hs = history.filter((x) => x.t > shiftStart);
+    chart("c-output", {
+      type: "line",
+      data: { labels: hs.map((x) => hhmm(x.t)), datasets: [
+        { label: t("produced"), data: hs.map((x) => x.produced), borderColor: css("--accent"), backgroundColor: "rgba(63,167,255,.15)", fill: true, pointRadius: 0, tension: .2 },
+        { label: t("plan_line"), data: hs.map((x) => x.plan_to_date), borderColor: "#94a3b8", borderDash: [6, 4], pointRadius: 0 },
+      ] },
+      options: { scales: { x: { ticks: { maxTicksLimit: 9 } }, y: { beginAtZero: true } } },
+    });
+    const h8 = history.slice(-480);
+    chart("c-jph", {
+      type: "line",
+      data: { labels: h8.map((x) => hhmm(x.t)), datasets: [
+        { label: t("k_jph"), data: h8.map((x) => x.jph), borderColor: css("--accent2"), pointRadius: 0, yAxisID: "y" },
+        { label: "OEE %", data: h8.map((x) => Math.round(x.oee * 100)), borderColor: css("--maintenance"), pointRadius: 0, yAxisID: "y1" },
+      ] },
+      options: { scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { beginAtZero: true }, y1: { position: "right", min: 0, max: 100, grid: { display: false } } } },
+    });
+    const main = S.stations.filter((s) => s.id !== "L1");
+    chart("c-oee", {
+      type: "bar",
+      data: { labels: main.map((s) => s.id), datasets: [{ label: "OEE", data: main.map((s) => Math.round(s.kpi.oee * 100)),
+        backgroundColor: main.map((s) => s.kpi.oee >= 0.8 ? COLORS.working : s.kpi.oee >= 0.6 ? COLORS.blocked : COLORS.down) }] },
+      options: { plugins: { legend: { display: false } }, scales: { x: {}, y: { min: 0, max: 100 } } },
+    });
+    chart("c-losses", {
+      type: "bar",
+      data: { labels: main.map((s) => s.id), datasets: ["down", "maintenance", "no_parts", "blocked", "starved"].map((k) => ({
+        label: t("s_" + k), data: main.map((s) => Math.round(s.kpi.time[k])), backgroundColor: COLORS[k], stack: "a" })) },
+      options: { scales: { x: { stacked: true }, y: { stacked: true } } },
+    });
+    const share = Object.entries(S.bottleneck.share);
+    chart("c-bn", {
+      type: "doughnut",
+      data: { labels: share.map(([k]) => stName(k)), datasets: [{ data: share.map(([, v]) => Math.round(v * 100)),
+        backgroundColor: ["#ef4444", "#f59e0b", "#3fa7ff", "#a78bfa", "#22d3a6", "#64748b", "#fb923c"], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: "right", labels: { color: css("--muted"), boxWidth: 10 } } } },
+    });
+    const defs = Object.entries(S.kpi.defects).sort((a, b) => b[1] - a[1]);
+    chart("c-defects", {
+      type: "bar",
+      data: { labels: defs.map(([k]) => t("d_" + k)), datasets: [{ label: t("defects_pareto"), data: defs.map(([, v]) => v), backgroundColor: COLORS.blocked }] },
+      options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: {} } },
+    });
+    document.getElementById("forecast-full").innerHTML = forecastHtml(true);
+    document.getElementById("recs").innerHTML = recsHtml();
+    document.getElementById("stock").innerHTML = S.parts.map((p) => {
+      const f = p.stock / p.max, col = p.stock <= 8 ? COLORS.down : f < 0.35 ? COLORS.blocked : COLORS.working;
+      return `<div class="stock-row"><span>${t("p_" + p.id)}</span><span class="meter"><i style="width:${f * 100}%;background:${col}"></i></span>
+        <span>${p.stock} / ${p.max} · <span class="${p.blocked ? "" : "muted"}" style="${p.blocked ? "color:" + COLORS.down : ""}">${p.blocked ? t("delivery_blocked") : t("next_delivery", { m: p.next_delivery_min })}</span></span></div>`;
+    }).join("");
+  }
+
+  // ------------------------------------------------------------------ AI tab
+  function renderAi() {
+    const rows = S.stations.filter((s) => s.ai).sort((a, b) => b.ai.risk - a.ai.risk);
+    document.querySelector("#risk-table tbody").innerHTML = rows.map((s) => {
+      const hc = s.ai.health >= 0.7 ? COLORS.working : s.ai.health >= 0.45 ? COLORS.blocked : COLORS.down;
+      return `<tr><td><b>${s.id}</b> ${t("st_" + s.id)}</td>
+        <td><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span></td>
+        <td><span class="meter"><i style="width:${s.ai.health * 100}%;background:${hc}"></i></span>${pct(s.ai.health)}</td>
+        <td><span class="meter"><i style="width:${Math.min(100, s.ai.risk * 200)}%;background:${RISK[s.ai.level]}"></i></span>${pct(s.ai.risk)}</td>
+        <td class="small">${s.ai.drivers.map((d) => t(d.feature)).join(", ")}</td>
+        <td>${s.state === "down" || s.state === "maintenance" ? "" : `<button class="btn" data-pm="${s.id}">${t("schedule_pm_short")}</button>`}</td></tr>`;
+    }).join("");
+  }
+
+  function renderMetrics() {
+    if (!metrics) return;
+    const m = metrics.model || {};
+    document.getElementById("model-metrics").innerHTML = `
+      <div class="row"><span>${t("m_auc")}</span><b>${m.roc_auc ?? "—"}</b></div>
+      <div class="row"><span>${t("m_lift")}</span><b>×${m.lift_top10 ?? "—"}</b></div>
+      <div class="row"><span>${t("m_recall")}</span><b>${m.recall_top10 !== undefined ? pct(m.recall_top10) : "—"}</b></div>
+      <div class="row"><span>${t("m_samples")}</span><b>${m.samples ? num(m.samples) : "—"}</b></div>`;
+    const e = metrics.effect;
+    if (!e) return;
+    document.getElementById("effect-desc").textContent = t("effect_desc", { days: e.days_per_seed, seeds: e.seeds });
+    const d = e.days_per_seed;
+    const r = e.reactive, p = e.predictive;
+    if (charts["c-effect"]) { charts["c-effect"].destroy(); delete charts["c-effect"]; }
+    chart("c-effect", {
+      type: "bar",
+      data: { labels: [t("e_breakdown"), t("e_output"), t("e_plan")], datasets: [
+        { label: t("reactive"), data: [r.breakdown_min / d, r.cars / d, r.plan_hit * 100].map((x) => Math.round(x)), backgroundColor: "#64748b" },
+        { label: t("predictive"), data: [p.breakdown_min / d, p.cars / d, p.plan_hit * 100].map((x) => Math.round(x)), backgroundColor: css("--accent2") },
+      ] },
+      options: { scales: { x: {}, y: { beginAtZero: true } } },
+    });
+    renderCalc();
+  }
+
+  const calcState = { days: 250, shifts: 2, margin: 700000, downcost: 1500000 };
+  function renderCalc() {
+    const e = metrics && metrics.effect;
+    if (!e) return;
+    const box = document.getElementById("calc");
+    if (!box.querySelector("input")) {
+      box.className = "calc";
+      box.innerHTML = [["days", "calc_days"], ["shifts", "calc_shifts"], ["margin", "calc_margin"], ["downcost", "calc_downcost"]]
+        .map(([k, l]) => `<label><span>${t(l)}</span><input type="number" data-calc="${k}" value="${calcState[k]}"></label>`).join("") + `<div class="out" id="calc-out"></div>`;
+      box.querySelectorAll("input").forEach((i) => i.addEventListener("input", () => { calcState[i.dataset.calc] = +i.value || 0; renderCalc(); }));
+    }
+    const d = e.days_per_seed, perShift = (x) => x / d / 3;
+    const extraCars = (perShift(e.predictive.cars) - perShift(e.reactive.cars)) * calcState.shifts * calcState.days;
+    const hours = (perShift(e.reactive.breakdown_min) - perShift(e.predictive.breakdown_min)) * calcState.shifts * calcState.days / 60;
+    // downtime cost is counted only for the part of downtime not already reflected in extra output (half, conservative)
+    const money = extraCars * calcState.margin + hours * 0.5 * calcState.downcost;
+    document.getElementById("calc-out").innerHTML = `
+      <div class="row"><span>${t("calc_extra")}</span><b>+${num(Math.round(extraCars))} ${t("cars")}</b></div>
+      <div class="row"><span>${t("calc_hours")}</span><b>−${num(Math.round(hours))}</b></div>
+      <div class="row"><span>${t("calc_money")}</span><b class="big" style="font-size:22px">${num(Math.round(money / 1e6))} ${t("calc_mln")}</b></div>
+      <p class="muted small">${t("calc_note")}</p>`;
+  }
+
+  // ------------------------------------------------------------------ station drawer
+  async function openStation(id) {
+    selected = id;
+    document.getElementById("drawer").classList.add("open");
+    await renderDrawer();
+  }
+  async function renderDrawer() {
+    if (!selected || !S) return;
+    const s = S.stations.find((x) => x.id === selected);
+    let det;
+    if (LOCAL) det = LOCAL.station(selected);
+    else try { det = await (await fetch("/api/station/" + selected)).json(); } catch { return; }
+    const k = s.kpi, ai = s.ai;
+    const body = document.getElementById("drawer-body");
+    body.innerHTML = `
+      <h2>${stName(s.id)}</h2>
+      <div class="muted">${t("shop_" + s.shop)}</div>
+      <div class="section"><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span>
+        ${s.state === "starved" ? `<span class="muted small"> ${t("s_hint_starved")}</span>` : s.state === "blocked" ? `<span class="muted small"> ${t("s_hint_blocked")}</span>` : ""}
+        ${s.down_left_min ? `<span class="small"> · ${s.down_left_min} ${t("minutes")}</span>` : ""}</div>
+      ${ai ? `<div class="section">
+        <div class="row"><span>${t("health")}</span><b>${pct(ai.health)}</b></div>
+        <div class="row"><span>${t("risk2h")}</span><b style="color:${RISK[ai.level]}">${pct(ai.risk)}</b></div>
+        <div class="row"><span>${t("drivers")}</span><b>${ai.drivers.map((d) => t(d.feature)).join(", ")}</b></div>
+        <button class="btn primary" style="margin-top:8px" data-pm="${s.id}" ${s.state === "down" || s.state === "maintenance" ? "disabled" : ""}>${t("schedule_pm")}</button>
+      </div>` : ""}
+      <div class="section"><div class="muted small">${t("sensor_chart")}</div><div class="chart"><canvas id="c-sensor"></canvas></div></div>
+      <div class="section">
+        <div class="row"><span>OEE</span><b>${pct(k.oee)}</b></div>
+        <div class="row"><span>${t("availability")}</span><b>${pct(k.availability)}</b></div>
+        <div class="row"><span>${t("performance")}</span><b>${pct(k.performance)}</b></div>
+        <div class="row"><span>${t("quality")}</span><b>${pct(k.quality, 1)}</b></div>
+        <div class="row"><span>${t("utilization")}</span><b>${pct(k.utilization)}</b></div>
+        <div class="row"><span>${t("cycle")}</span><b>${s.cycle}${s.units > 1 ? " × " + s.units : ""}</b></div>
+        <div class="row"><span>${t("buffer")}</span><b>${s.buffer} / ${s.buffer_cap}</b></div>
+        <div class="row"><span>${t("failures")}</span><b>${k.failures}</b></div>
+      </div>
+      <div class="section"><div class="muted small">${t("sensors")}</div>
+        <div class="row"><span>${t("vibration")}</span><b>${s.sensors.vibration} mm/s</b></div>
+        <div class="row"><span>${t("temperature")}</span><b>${s.sensors.temperature} °C</b></div>
+        <div class="row"><span>${t("current")}</span><b>${s.sensors.current} A</b></div>
+      </div>`;
+    const b = det.baseline, hs = det.sensor_hist;
+    if (charts["c-sensor"]) { charts["c-sensor"].destroy(); delete charts["c-sensor"]; }
+    chart("c-sensor", {
+      type: "line",
+      data: { labels: hs.map((_, i) => i - hs.length + 1), datasets: [
+        { label: t("vibration"), data: hs.map((x) => +(x[0] / b.vibration).toFixed(2)), borderColor: COLORS.down, pointRadius: 0 },
+        { label: t("temperature"), data: hs.map((x) => +(x[1] / b.temperature).toFixed(3)), borderColor: COLORS.blocked, pointRadius: 0 },
+        { label: t("current"), data: hs.map((x) => +(x[2] / b.current).toFixed(2)), borderColor: css("--accent"), pointRadius: 0 },
+      ] },
+      options: { scales: { x: { ticks: { maxTicksLimit: 6 } }, y: {} } },
+    });
+  }
+
+  // ------------------------------------------------------------------ main render
+  let lastHist = 0, lastDrawer = 0;
+  function render() {
+    renderKpis();
+    renderMap();
+    renderFeed();
+    document.getElementById("forecast-mini").innerHTML = forecastHtml(false);
+    const tab = document.querySelector(".tab.active").dataset.tab;
+    const now = Date.now();
+    if (now - lastHist > 4000) { lastHist = now; refreshHistory(); }
+    if (tab === "exec") renderExec();
+    if (tab === "ai") renderAi();
+    if (selected && now - lastDrawer > 3000) { lastDrawer = now; renderDrawer(); }
+  }
+
+  // ------------------------------------------------------------------ events
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
+    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + b.dataset.tab));
+    if (b.dataset.tab === "ai") renderMetrics();
+    if (S) render();
+  }));
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang; localStorageSet("lang", lang); applyLang();
+    const calc = document.getElementById("calc"); calc.innerHTML = ""; renderCalc();
+  }));
+  document.getElementById("speed").addEventListener("change", (e) => post("/api/speed", { value: e.target.value }));
+  document.getElementById("pause").addEventListener("click", () => post("/api/speed", { value: "pause" }));
+  document.querySelectorAll(".sc").forEach((b) => b.addEventListener("click", async () => {
+    await post("/api/scenario/" + b.dataset.sc);
+    if (b.dataset.sc === "reset") { history = []; selected = null; document.getElementById("drawer").classList.remove("open"); }
+  }));
+  document.getElementById("drawer-close").addEventListener("click", () => { selected = null; document.getElementById("drawer").classList.remove("open"); });
+  document.getElementById("only-active").addEventListener("change", () => S && renderFeed());
+  document.body.addEventListener("click", async (e) => {
+    const pm = e.target.closest("[data-pm]");
+    if (pm) { pm.disabled = true; pm.textContent = t("pm_done"); await post("/api/maintenance/" + pm.dataset.pm); }
+    const ack = e.target.closest("[data-ack]");
+    if (ack) { await post(`/api/incidents/${ack.dataset.ack}/ack`); }
+  });
+
+  if (LOCAL) document.querySelectorAll("[data-server-only]").forEach((el) => (el.hidden = true));
+  if (LOCAL) {
+    document.querySelector('[data-i18n="model_desc"]').dataset.i18n = "model_desc_lite";
+    document.querySelector('[data-i18n="app_sub"]').dataset.i18n = "app_sub_demo";
+  }
+  applyLang();
+  connect();
+  loadMetrics();
+})();
+
+</script>
+</body>
+</html>

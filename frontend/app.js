@@ -43,7 +43,21 @@
   }
 
   // ------------------------------------------------------------------ connection
+  // Static mode: the whole twin runs in the browser (engine.js), no server needed.
+  const LOCAL = window.LOCAL_DATA && window.LocalTwin ? new LocalTwin(LOCAL_DATA.config, LOCAL_DATA.model, LOCAL_DATA.effect) : null;
+  function connectLocal() {
+    const dot = document.getElementById("conn");
+    dot.classList.add("on"); dot.title = t("live");
+    let last = performance.now(), lastRender = 0;
+    setInterval(() => {
+      const now = performance.now();
+      LOCAL.advance((now - last) / 1000); last = now;
+      if (now - lastRender > 950) { lastRender = now; S = LOCAL.snapshot(); render(); }
+    }, 200);
+    S = LOCAL.snapshot(); render();
+  }
   function connect() {
+    if (LOCAL) return connectLocal();
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}/ws`);
     const dot = document.getElementById("conn");
@@ -63,13 +77,16 @@
     polling = false;
   }
   async function post(url, body) {
+    if (LOCAL) { const res = LOCAL.post(url, body); S = LOCAL.snapshot(); render(); return res; }
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
     return r.json();
   }
   async function refreshHistory() {
+    if (LOCAL) { history = LOCAL.history(480); return; }
     try { history = await (await fetch("/api/history?minutes=480")).json(); } catch { /* retry later */ }
   }
   async function loadMetrics() {
+    if (LOCAL) { metrics = LOCAL.metrics(); renderMetrics(); return; }
     try { metrics = await (await fetch("/api/metrics")).json(); renderMetrics(); } catch { /* ignore */ }
   }
 
@@ -239,6 +256,7 @@
 
   // ------------------------------------------------------------------ charts
   function chart(id, cfg) {
+    if (!window.Chart) return; // chart library unavailable: the rest of the dashboard still works
     const base = {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { legend: { labels: { color: css("--muted"), boxWidth: 12 } } },
@@ -381,7 +399,8 @@
     if (!selected || !S) return;
     const s = S.stations.find((x) => x.id === selected);
     let det;
-    try { det = await (await fetch("/api/station/" + selected)).json(); } catch { return; }
+    if (LOCAL) det = LOCAL.station(selected);
+    else try { det = await (await fetch("/api/station/" + selected)).json(); } catch { return; }
     const k = s.kpi, ai = s.ai;
     const body = document.getElementById("drawer-body");
     body.innerHTML = `
@@ -466,6 +485,11 @@
     if (ack) { await post(`/api/incidents/${ack.dataset.ack}/ack`); }
   });
 
+  if (LOCAL) document.querySelectorAll("[data-server-only]").forEach((el) => (el.hidden = true));
+  if (LOCAL) {
+    document.querySelector('[data-i18n="model_desc"]').dataset.i18n = "model_desc_lite";
+    document.querySelector('[data-i18n="app_sub"]').dataset.i18n = "app_sub_demo";
+  }
   applyLang();
   connect();
   loadMetrics();
