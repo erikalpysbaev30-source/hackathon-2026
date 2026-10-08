@@ -1,20 +1,28 @@
 {
-  "name": "Allur Kostanay — line 1 (demo layout)",
+  "name": "Allur Kostanay — line 1 (calibrated to the organizers' test data)",
   "tick_seconds": 10,
   "shift_hours": 8,
-  "plan_per_shift": 80,
+  "shifts_per_day": 2,
+  "plan_per_shift": 120,
+  "targets": {
+    "oee": 0.85,
+    "defect_rate": 0.02,
+    "downtime_min_day": 60,
+    "plan_month": 5500,
+    "working_days_month": 22
+  },
   "models": [
     {
-      "id": "sedan",
-      "mix": 0.4
+      "id": "onix",
+      "mix": 0.52
     },
     {
-      "id": "crossover",
-      "mix": 0.45
+      "id": "cobalt",
+      "mix": 0.375
     },
     {
-      "id": "pickup",
-      "mix": 0.15
+      "id": "jac_j7",
+      "mix": 0.105
     }
   ],
   "shops": [
@@ -60,28 +68,28 @@
       "stock": 40,
       "max": 80,
       "delivery_every_min": 120,
-      "delivery_qty": 26
+      "delivery_qty": 36
     },
     {
       "id": "engine",
       "stock": 30,
       "max": 60,
       "delivery_every_min": 180,
-      "delivery_qty": 38
+      "delivery_qty": 53
     },
     {
       "id": "interior",
       "stock": 35,
       "max": 70,
       "delivery_every_min": 120,
-      "delivery_qty": 26
+      "delivery_qty": 36
     },
     {
       "id": "wheels",
       "stock": 45,
       "max": 90,
       "delivery_every_min": 240,
-      "delivery_qty": 52
+      "delivery_qty": 72
     }
   ],
   "stations": [
@@ -89,154 +97,163 @@
       "id": "W1",
       "shop": "welding",
       "type": "robot_weld",
-      "cycle": 250,
+      "cycle": 180,
       "units": 1,
       "buffer": 4,
       "part": "body_kit",
       "mtbf_h": 30,
       "mttr_min": [
-        30,
-        90
+        15,
+        60
       ],
       "defect": 0.0033,
       "x": 80,
-      "y": 140
+      "y": 140,
+      "equip": "ABB-01"
     },
     {
       "id": "W2",
       "shop": "welding",
       "type": "robot_weld",
-      "cycle": 260,
+      "cycle": 187,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 26,
       "mttr_min": [
-        30,
-        100
+        15,
+        60
       ],
       "defect": 0.0044,
       "x": 150,
-      "y": 140
+      "y": 140,
+      "equip": "ABB-02"
     },
     {
       "id": "W3",
       "shop": "welding",
       "type": "robot_weld",
-      "cycle": 268,
+      "cycle": 193,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 22,
       "mttr_min": [
-        40,
-        120
+        20,
+        70
       ],
       "defect": 0.0044,
       "x": 220,
-      "y": 140
+      "y": 140,
+      "equip": "ABB-03"
     },
     {
       "id": "W4",
       "shop": "welding",
       "type": "metrology",
-      "cycle": 240,
+      "cycle": 173,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 60,
       "mttr_min": [
-        20,
-        45
+        15,
+        40
       ],
       "defect": 0.0,
       "x": 290,
-      "y": 140
+      "y": 140,
+      "equip": "ABB-04"
     },
     {
       "id": "P1",
       "shop": "paint",
       "type": "pretreat",
-      "cycle": 250,
+      "cycle": 180,
       "units": 1,
       "buffer": 6,
       "mtbf_h": 50,
       "mttr_min": [
-        30,
-        80
+        20,
+        60
       ],
-      "defect": 0.0022,
+      "defect": 0.0028,
       "x": 420,
-      "y": 140
+      "y": 140,
+      "equip": "Камера-01"
     },
     {
       "id": "P2",
       "shop": "paint",
       "type": "paint_booth",
-      "cycle": 298,
+      "cycle": 215,
       "units": 1,
       "buffer": 6,
       "mtbf_h": 24,
       "mttr_min": [
-        40,
-        110
+        25,
+        65
       ],
-      "defect": 0.011,
+      "defect": 0.014,
       "x": 500,
-      "y": 140
+      "y": 140,
+      "equip": "Камера-02"
     },
     {
       "id": "P3",
       "shop": "paint",
       "type": "oven",
-      "cycle": 840,
+      "cycle": 605,
       "units": 3,
       "buffer": 4,
       "mtbf_h": 70,
       "mttr_min": [
-        60,
-        150
+        30,
+        90
       ],
-      "defect": 0.0028,
+      "defect": 0.0036,
       "x": 580,
-      "y": 140
+      "y": 140,
+      "equip": "Печь-01"
     },
     {
       "id": "A1",
       "shop": "assembly",
       "type": "trim",
-      "cycle": 275,
+      "cycle": 198,
       "units": 1,
       "buffer": 6,
       "part": "interior",
       "mtbf_h": 45,
       "mttr_min": [
         15,
-        50
+        45
       ],
-      "defect": 0.0055,
+      "defect": 0.0022,
       "x": 710,
-      "y": 140
+      "y": 140,
+      "equip": "Конвейер-01"
     },
     {
       "id": "A2",
       "shop": "assembly",
       "type": "marriage",
-      "cycle": 288,
+      "cycle": 207,
       "units": 1,
       "buffer": 4,
       "part": "engine",
       "mtbf_h": 28,
       "mttr_min": [
-        30,
-        90
+        20,
+        60
       ],
-      "defect": 0.0044,
+      "defect": 0.0018,
       "x": 810,
-      "y": 140
+      "y": 140,
+      "equip": "Конвейер-02"
     },
     {
       "id": "A3",
       "shop": "assembly",
       "type": "final",
-      "cycle": 270,
+      "cycle": 194,
       "units": 1,
       "buffer": 4,
       "part": "wheels",
@@ -245,15 +262,16 @@
         20,
         60
       ],
-      "defect": 0.0055,
+      "defect": 0.0022,
       "x": 910,
-      "y": 140
+      "y": 140,
+      "equip": "Конвейер-03"
     },
     {
       "id": "Q1",
       "shop": "qc",
       "type": "alignment",
-      "cycle": 240,
+      "cycle": 173,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 55,
@@ -263,13 +281,14 @@
       ],
       "defect": 0.0,
       "x": 910,
-      "y": 350
+      "y": 350,
+      "equip": "Стенд-01"
     },
     {
       "id": "Q2",
       "shop": "qc",
       "type": "water_test",
-      "cycle": 250,
+      "cycle": 180,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 80,
@@ -279,13 +298,14 @@
       ],
       "defect": 0.0,
       "x": 810,
-      "y": 350
+      "y": 350,
+      "equip": "Стенд-02"
     },
     {
       "id": "Q3",
       "shop": "qc",
       "type": "inspection",
-      "cycle": 230,
+      "cycle": 166,
       "units": 1,
       "buffer": 4,
       "mtbf_h": 120,
@@ -296,13 +316,14 @@
       "defect": 0.0,
       "inspection": true,
       "x": 710,
-      "y": 350
+      "y": 350,
+      "equip": "Пост ОТК-01"
     },
     {
       "id": "RW",
       "shop": "qc",
       "type": "rework",
-      "cycle": 1200,
+      "cycle": 864,
       "units": 2,
       "buffer": 8,
       "mtbf_h": 200,
@@ -313,13 +334,14 @@
       "defect": 0.0,
       "rework": true,
       "x": 710,
-      "y": 432
+      "y": 432,
+      "equip": "Пост доработки"
     },
     {
       "id": "L1",
       "shop": "logistics",
       "type": "yard",
-      "cycle": 120,
+      "cycle": 86,
       "units": 2,
       "buffer": 30,
       "mtbf_h": 500,
@@ -330,7 +352,8 @@
       "defect": 0.0,
       "sink": true,
       "x": 470,
-      "y": 390
+      "y": 390,
+      "equip": "Площадка ГП"
     }
   ],
   "sensor_baseline": {

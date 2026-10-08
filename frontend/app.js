@@ -23,11 +23,20 @@
     return s;
   }
   const stName = (id) => id ? `${id} ${t("st_" + id)}` : "";
+  const equipOf = (id) => (S && (S.stations.find((x) => x.id === id) || {}).equip) || "";
+  const stFull = (id) => { const e = equipOf(id); return stName(id) + (e ? ` (${e})` : ""); };
+  // plant time counts working hours only (2 shifts from 08:00): map it to day and wall-clock time
+  const cal = (sec) => {
+    const wd = ((S && S.kpi.shifts_per_day) || 3) * 8 * 3600, rel = sec - 8 * 3600;
+    const wall = 8 * 3600 + (((rel % wd) + wd) % wd);
+    return { day: Math.floor(rel / wd) + 1, hh: Math.floor(wall % 86400 / 3600), mm: Math.floor(wall % 3600 / 60) };
+  };
   const fmtTime = (sec) => {
-    const d = Math.floor(sec / 86400) + 1, h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
-    return `${t("day")} ${d}, ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const c = cal(sec);
+    return `${t("day")} ${c.day}, ${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`;
   };
   const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+  const pctL = (x, d = 1) => (x * 100).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
   const num = (x) => Number(x).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU");
 
   function applyLang() {
@@ -40,6 +49,7 @@
     for (const k in charts) delete charts[k];
     if (S) render();
     renderMetrics();
+    if (document.querySelector(".tab.active").dataset.tab === "data") renderData();
   }
 
   // ------------------------------------------------------------------ connection
@@ -95,17 +105,25 @@
     const k = S.kpi;
     const attain = k.attainment;
     const cls = (v, g, w) => (v >= g ? "good" : v >= w ? "warn" : "bad");
+    const tg = k.targets || {}, oeeT = tg.oee || 0.85, defT = tg.defect_rate || 0.02, dayT = tg.downtime_min_day || 60;
+    const dr = k.defect_rate_by_shop || {};
+    const drHtml = ["welding", "paint", "assembly"].map((sh) =>
+      `<span style="color:${(dr[sh] || 0) > defT ? COLORS.down : COLORS.working}">${pctL(dr[sh] || 0)}</span>`).join("<small> · </small>");
+    const worst = S.stations.filter((s) => s.id !== "L1" && s.id !== "RW").reduce((a, s) => (!a || s.down_day_min > a.down_day_min ? s : a), null);
     const tiles = [
       { label: t("k_produced"), value: `${k.produced}<small> / ${k.plan} ${t("k_plan")}</small>`, bar: k.produced / k.plan },
       { label: t("k_attain"), value: attain == null ? "—" : pct(attain), cls: attain == null ? "" : cls(attain, 1, 0.92) },
       { label: t("k_jph"), value: k.jph },
-      { label: t("k_oee"), value: pct(k.oee), cls: cls(k.oee, 0.85, 0.7) },
+      { label: `${t("k_oee")} · ${t("target")} ≥ ${pct(oeeT)}`, value: pct(k.oee), cls: cls(k.oee, oeeT, oeeT - 0.1) },
+      { label: `${t("k_defect_shop")} · ≤ ${pct(defT)}`, value: `<span style="font-size:13px;white-space:nowrap">${drHtml}</span>`, title: t("k_defect_shop_hint") },
       { label: t("k_fpy"), value: pct(k.fpy, 1), cls: cls(k.fpy, 0.9, 0.8) },
+      { label: `${t("k_day_down")} · ≤ ${dayT} ${t("minutes")}`, value: worst ? `${worst.down_day_min}<small> ${t("minutes")} · ${worst.id}</small>` : "—",
+        cls: !worst ? "" : worst.down_day_min > dayT ? "bad" : worst.down_day_min >= 0.75 * dayT ? "warn" : "good" },
       { label: t("k_downtime"), value: Math.round(k.downtime_min), cls: k.downtime_min > 60 ? "bad" : k.downtime_min > 20 ? "warn" : "good" },
       { label: t("k_wip"), value: `${k.wip}<small> · ${k.rework_queue} ${t("k_rework")}</small>` },
     ];
     document.getElementById("kpis").innerHTML = tiles.map((x) =>
-      `<div class="kpi ${x.cls || ""}"><div class="label">${x.label}</div><div class="value">${x.value}</div>${x.bar !== undefined ? `<div class="bar"><i style="width:${Math.min(100, x.bar * 100)}%"></i></div>` : ""}</div>`).join("");
+      `<div class="kpi ${x.cls || ""}"${x.title ? ` title="${x.title}"` : ""}><div class="label">${x.label}</div><div class="value">${x.value}</div>${x.bar !== undefined ? `<div class="bar"><i style="width:${Math.min(100, x.bar * 100)}%"></i></div>` : ""}</div>`).join("");
     const c = S.clock;
     document.getElementById("clock").textContent = `${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`;
     document.getElementById("clock-sub").textContent = `${t("day")} ${c.day} · ${t("shift")} ${k.shift}`;
@@ -208,7 +226,9 @@
     if (p.risk !== undefined) p.risk = Math.round(p.risk * 100);
     if (p.health !== undefined) p.health = Math.round(p.health * 100);
     if (p.expected !== undefined) p.expected = Math.round(p.expected);
-    return t("i_" + i.type, Object.assign(p, { st: stName(i.station) }));
+    const cause = p.cause ? ` (${t("c_" + p.cause)})` : "";
+    p.cause = cause;
+    return t("i_" + i.type, Object.assign(p, { st: stFull(i.station) }));
   }
   function renderFeed() {
     const items = S.incidents.slice(0, 25);
@@ -270,10 +290,11 @@
     if (!charts[id]) charts[id] = new Chart(document.getElementById(id), cfg);
     else { charts[id].data = cfg.data; charts[id].update("none"); }
   }
-  const hhmm = (sec) => `${String(Math.floor(sec % 86400 / 3600)).padStart(2, "0")}:${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}`;
+  const hhmm = (sec) => { const c = cal(sec); return `${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`; };
 
   function renderExec() {
     const shiftStart = S.clock.t - S.kpi.shift_elapsed * 8 * 3600;
+    const oeeT = (S.kpi.targets || {}).oee || 0.85;
     const hs = history.filter((x) => x.t > shiftStart);
     chart("c-output", {
       type: "line",
@@ -296,7 +317,7 @@
     chart("c-oee", {
       type: "bar",
       data: { labels: main.map((s) => s.id), datasets: [{ label: "OEE", data: main.map((s) => Math.round(s.kpi.oee * 100)),
-        backgroundColor: main.map((s) => s.kpi.oee >= 0.8 ? COLORS.working : s.kpi.oee >= 0.6 ? COLORS.blocked : COLORS.down) }] },
+        backgroundColor: main.map((s) => s.kpi.oee >= oeeT ? COLORS.working : s.kpi.oee >= oeeT - 0.2 ? COLORS.blocked : COLORS.down) }] },
       options: { plugins: { legend: { display: false } }, scales: { x: {}, y: { min: 0, max: 100 } } },
     });
     chart("c-losses", {
@@ -332,7 +353,7 @@
     const rows = S.stations.filter((s) => s.ai).sort((a, b) => b.ai.risk - a.ai.risk);
     document.querySelector("#risk-table tbody").innerHTML = rows.map((s) => {
       const hc = s.ai.health >= 0.7 ? COLORS.working : s.ai.health >= 0.45 ? COLORS.blocked : COLORS.down;
-      return `<tr><td><b>${s.id}</b> ${t("st_" + s.id)}</td>
+      return `<tr><td><b>${s.id}</b> ${t("st_" + s.id)}${s.equip ? `<div class="muted small">${s.equip}</div>` : ""}</td>
         <td><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span></td>
         <td><span class="meter"><i style="width:${s.ai.health * 100}%;background:${hc}"></i></span>${pct(s.ai.health)}</td>
         <td><span class="meter"><i style="width:${Math.min(100, s.ai.risk * 200)}%;background:${RISK[s.ai.level]}"></i></span>${pct(s.ai.risk)}</td>
@@ -377,7 +398,7 @@
         .map(([k, l]) => `<label><span>${t(l)}</span><input type="number" data-calc="${k}" value="${calcState[k]}"></label>`).join("") + `<div class="out" id="calc-out"></div>`;
       box.querySelectorAll("input").forEach((i) => i.addEventListener("input", () => { calcState[i.dataset.calc] = +i.value || 0; renderCalc(); }));
     }
-    const d = e.days_per_seed, perShift = (x) => x / d / 3;
+    const d = e.days_per_seed, perShift = (x) => x / d / (e.shifts_per_day || 2);
     const extraCars = (perShift(e.predictive.cars) - perShift(e.reactive.cars)) * calcState.shifts * calcState.days;
     const hours = (perShift(e.reactive.breakdown_min) - perShift(e.predictive.breakdown_min)) * calcState.shifts * calcState.days / 60;
     // downtime cost is counted only for the part of downtime not already reflected in extra output (half, conservative)
@@ -388,6 +409,184 @@
       <div class="row"><span>${t("calc_money")}</span><b class="big" style="font-size:22px">${num(Math.round(money / 1e6))} ${t("calc_mln")}</b></div>
       <p class="muted small">${t("calc_note")}</p>`;
   }
+
+  // ------------------------------------------------------------------ organizer data tab
+  // Same rules as backend/app/testdata.py: OEE = (run h / shift h) x min(1, fact / (plan/h x run h)) x (1 - defects / released).
+  let DATA = window.ALLUR_DATA ? JSON.parse(JSON.stringify(window.ALLUR_DATA)) : null;
+  let dataFiles = null;
+  const dtr = (x) => { if (lang !== "ko" || x == null) return x; let s = String(x); for (const [a, b] of window.DATA_KO || []) s = s.split(a).join(b); return s; };
+  const areaOf = (line) => String(line).split("-")[0].trim();
+  const n1 = (x) => Number(x).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU", { maximumFractionDigits: 1 });
+
+  function analyze(d) {
+    const tg = d.targets, sh = tg.shift_hours;
+    const q = {};
+    for (const r of d.quality) q[r.date + "|" + r.area] = r;
+    const down = {};
+    for (const r of d.downtime) { const k = r.date + "|" + r.equip; down[k] = down[k] || { date: r.date, equip: r.equip, area: r.area, minutes: 0, causes: [] }; down[k].minutes += r.minutes; down[k].causes.push(r.cause); }
+    const logged = {};
+    for (const r of d.downtime) logged[r.date + "|" + r.area] = (logged[r.date + "|" + r.area] || 0) + r.minutes;
+    const lines = d.lines.map((r) => {
+      const a = r.hours / sh, perf = r.hours ? Math.min(1, r.fact / (r.plan / sh * r.hours)) : 0;
+      const qr = q[r.date + "|" + areaOf(r.line)], qual = qr && qr.released ? 1 - qr.defects / qr.released : 1;
+      const lost = Math.round((sh - r.hours) * 60), log = logged[r.date + "|" + areaOf(r.line)] || 0;
+      return Object.assign({}, r, { availability: a, performance: perf, quality: qual, oee: a * perf * qual, lost, logged: log });
+    });
+    const quality = d.quality.map((r) => Object.assign({}, r, { rate: r.released ? r.defects / r.released : 0 }));
+    const downs = Object.values(down);
+    const planTotal = d.plan.reduce((a, r) => a + r.qty, 0);
+    const lastArea = d.lines.length ? areaOf(d.lines[d.lines.length - 1].line) : null;
+    const fin = d.lines.filter((r) => areaOf(r.line) === lastArea);
+    const perShift = fin.length ? fin.reduce((a, r) => a + r.fact, 0) / fin.length : 0;
+    const days = tg.working_days_month;
+    return { tg, lines, quality, downs, planTotal, perShift, runRate: Math.round(perShift * tg.shifts_per_day * days),
+      needPerShift: tg.plan_month_min / (tg.shifts_per_day * days) };
+  }
+
+  function renderData() {
+    if (!DATA) return;
+    const A = analyze(DATA), tg = A.tg, lim = tg.critical_downtime_min_per_day_max;
+    document.getElementById("data-src").textContent = dataFiles ? t("data_src_user", { files: dataFiles.join(", ") }) : t("data_src_default");
+    const days = document.getElementById("data-days");
+    if (document.activeElement !== days) days.value = tg.working_days_month;
+    // target cards
+    const card = (label, norm, value, sub, ok, nBad, nAll) => `<div class="kpi ${ok ? "good" : "bad"}"><div class="label">${label} · ${norm}</div>
+      <div class="value">${value}</div><div class="sub2">${sub}</div><div class="sub2"><b>${ok ? t("tg_ok") : t("tg_bad", { n: nBad, m: nAll })}</b></div></div>`;
+    const minO = A.lines.reduce((a, r) => (!a || r.oee < a.oee ? r : a), null);
+    const avgO = A.lines.reduce((a, r) => a + r.oee, 0) / Math.max(1, A.lines.length);
+    const maxQ = A.quality.reduce((a, r) => (!a || r.rate > a.rate ? r : a), null);
+    const maxD = A.downs.reduce((a, r) => (!a || r.minutes > a.minutes ? r : a), null);
+    const badO = A.lines.filter((r) => r.oee < tg.oee_min).length, badQ = A.quality.filter((r) => r.rate > tg.defect_rate_max).length;
+    const badD = A.downs.filter((r) => r.minutes > lim).length, gap = tg.plan_month_min - A.planTotal;
+    document.getElementById("data-targets").innerHTML = [
+      minO ? card(t("tg_oee"), t("tg_norm_min", { v: pct(tg.oee_min) }), pctL(minO.oee), t("tg_oee_sub", { avg: pctL(avgO) }), !badO, badO, A.lines.length) : "",
+      maxQ ? card(t("tg_defect"), t("tg_norm_max", { v: pct(tg.defect_rate_max) }), pctL(maxQ.rate), t("tg_defect_sub", { area: dtr(maxQ.area), date: maxQ.date }), !badQ, badQ, A.quality.length) : "",
+      maxD ? card(t("tg_down"), t("tg_norm_max", { v: `${lim} ${t("minutes")}` }), `${maxD.minutes}<small> ${t("minutes")}</small>`, t("tg_down_sub", { equip: dtr(maxD.equip), date: maxD.date }), !badD, badD, A.downs.length) : "",
+      card(t("tg_plan"), t("tg_norm_min", { v: num(tg.plan_month_min) }), num(A.planTotal), gap > 0 ? t("tg_plan_sub", { gap: num(gap) }) : t("tg_plan_sub_ok"), gap <= 0, gap > 0 ? 1 : 0, 1),
+    ].join("");
+    // findings
+    const F = [];
+    const byArea = {};
+    for (const r of A.quality) if (r.rate > tg.defect_rate_max) (byArea[r.area] = byArea[r.area] || []).push(r);
+    for (const [area, rs] of Object.entries(byArea).sort((a, b) => b[1].length - a[1].length))
+      F.push(["critical", t("f_quality", { area: dtr(area), rates: rs.map((r) => `${pctL(r.rate)} (${r.date})`).join(", "), limit: pct(tg.defect_rate_max) })]);
+    if (gap > 0) F.push(["critical", t("f_plan_models", { models: DATA.plan.map((r) => `${r.model} ${num(r.qty)}`).join(", "), sum: num(A.planTotal), gap: num(gap), target: num(tg.plan_month_min) })]);
+    F.push([A.runRate >= tg.plan_month_min ? "good" : "warning", t(A.runRate >= tg.plan_month_min ? "f_capacity_ok" : "f_capacity", { per: n1(A.perShift), shifts: tg.shifts_per_day, days: tg.working_days_month,
+      rate: num(A.runRate), target: num(tg.plan_month_min), need: n1(Math.ceil(A.needPerShift * 10) / 10) })]);
+    for (const r of A.downs.filter((x) => x.minutes > lim)) F.push(["critical", t("f_down_bad", { equip: dtr(r.equip), date: r.date, m: r.minutes, limit: lim })]);
+    for (const r of A.downs.filter((x) => x.minutes <= lim && x.minutes >= 0.75 * lim)) F.push(["warning", t("f_down_near", { equip: dtr(r.equip), date: r.date, m: r.minutes, limit: lim })]);
+    if (!A.downs.some((x) => x.minutes >= 0.75 * lim)) F.push(["good", t("f_down_ok", { limit: lim })]);
+    if (badO) F.push(["warning", t("f_oee_bad", { limit: pct(tg.oee_min), list: A.lines.filter((r) => r.oee < tg.oee_min).map((r) => `${dtr(r.line)} ${r.date}: ${pctL(r.oee)}`).join(", ") })]);
+    else if (minO) F.push(["good", t("f_oee_ok", { min: pctL(minO.oee), max: pctL(Math.max(...A.lines.map((r) => r.oee))), limit: pct(tg.oee_min), line: dtr(minO.line), date: minO.date, val: pctL(minO.oee) })]);
+    const mism = A.lines.filter((r) => Math.abs(r.lost - r.logged) >= 15).sort((a, b) => Math.abs(b.lost - b.logged) - Math.abs(a.lost - a.logged));
+    if (mism.length) F.push(["info", t("f_recon", { n: mism.length, m: A.lines.length, line: dtr(mism[0].line), date: mism[0].date, lost: mism[0].lost, logged: mism[0].logged })]);
+    document.getElementById("data-findings").innerHTML = F.map(([sev, txt]) => `<li class="${sev}">${txt}</li>`).join("");
+    // tables
+    const cl = (ok, warn) => (ok ? "good" : warn ? "warn" : "bad");
+    document.getElementById("data-lines").innerHTML = `<thead><tr><th>${t("col_date")}</th><th>${t("col_line")}</th><th>${t("col_plan")}</th><th>${t("col_fact")}</th><th>${t("col_hours")}</th>
+      <th>${t("availability")}</th><th>${t("quality")}</th><th>OEE</th><th>${t("col_lost")}</th></tr></thead><tbody>` +
+      A.lines.map((r) => `<tr><td>${r.date}</td><td>${dtr(r.line)}</td><td>${r.plan}</td><td>${r.fact}</td><td>${n1(r.hours)}</td>
+        <td>${pctL(r.availability)}</td><td class="${cl(1 - r.quality <= tg.defect_rate_max)}">${pctL(r.quality)}</td>
+        <td class="${cl(r.oee >= tg.oee_min + 0.03, r.oee >= tg.oee_min)}">${pctL(r.oee)}</td>
+        <td class="${Math.abs(r.lost - r.logged) >= 15 ? "warn" : ""}">${r.lost} / ${r.logged}</td></tr>`).join("") + "</tbody>";
+    document.getElementById("data-down").innerHTML = `<thead><tr><th>${t("col_date")}</th><th>${t("col_equip")}</th><th>${t("col_cause")}</th><th>${t("col_minutes")}</th></tr></thead><tbody>` +
+      DATA.downtime.map((r) => { const tot = A.downs.find((x) => x.date === r.date && x.equip === r.equip).minutes;
+        return `<tr><td>${r.date}</td><td>${dtr(r.equip)}<div class="muted small">${dtr(r.area)}</div></td><td>${dtr(r.cause)}</td>
+        <td class="${cl(tot < 0.75 * lim, tot <= lim)}">${r.minutes}</td></tr>`; }).join("") + "</tbody>";
+    document.getElementById("data-plan").innerHTML = `<thead><tr><th>${t("col_model")}</th><th>${t("col_qty")}</th></tr></thead><tbody>` +
+      DATA.plan.map((r) => `<tr><td>${r.model}</td><td>${num(r.qty)}</td></tr>`).join("") +
+      `<tr class="total"><td>${t("total")}</td><td class="${cl(gap <= 0)}">${num(A.planTotal)}</td></tr>
+       <tr><td>${t("goal")}</td><td>${num(tg.plan_month_min)}</td></tr></tbody>`;
+    // charts
+    const dates = [...new Set(A.lines.map((r) => r.date))], lineNames = [...new Set(A.lines.map((r) => r.line))];
+    const palette = [css("--accent"), css("--accent2"), css("--maintenance"), css("--blocked")];
+    if (charts["c-data-oee"]) { charts["c-data-oee"].destroy(); delete charts["c-data-oee"]; }
+    chart("c-data-oee", { type: "bar", data: { labels: lineNames.map(dtr), datasets: dates.map((dt, i) => ({ label: dt, backgroundColor: palette[i % 4],
+        data: lineNames.map((ln) => { const r = A.lines.find((x) => x.line === ln && x.date === dt); return r ? +(r.oee * 100).toFixed(1) : null; }) }))
+        .concat([{ type: "line", label: `${t("target")} ${pct(tg.oee_min)}`, data: lineNames.map(() => tg.oee_min * 100), borderColor: COLORS.down, borderDash: [6, 4], pointRadius: 0 }]) },
+      options: { scales: { x: {}, y: { min: 70, max: 100 } } } });
+    const areas = [...new Set(A.quality.map((r) => r.area))];
+    if (charts["c-data-q"]) { charts["c-data-q"].destroy(); delete charts["c-data-q"]; }
+    chart("c-data-q", { type: "bar", data: { labels: areas.map(dtr), datasets: [...new Set(A.quality.map((r) => r.date))].map((dt, i) => ({ label: dt,
+        data: areas.map((ar) => { const r = A.quality.find((x) => x.area === ar && x.date === dt); return r ? +(r.rate * 100).toFixed(1) : null; }),
+        backgroundColor: areas.map((ar) => { const r = A.quality.find((x) => x.area === ar && x.date === dt); return r && r.rate > tg.defect_rate_max ? (i ? "#f87171" : COLORS.down) : (i ? "#4ade80" : COLORS.working); }) }))
+        .concat([{ type: "line", label: `${t("tg_norm_max", { v: pct(tg.defect_rate_max) })}`, data: areas.map(() => tg.defect_rate_max * 100), borderColor: COLORS.blocked, borderDash: [6, 4], pointRadius: 0 }]) },
+      options: { scales: { x: {}, y: { beginAtZero: true } } } });
+    renderDataTwin();
+  }
+
+  // live comparison: the twin's calibration against the organizer data
+  function renderDataTwin() {
+    if (!DATA || !S) return;
+    const A = analyze(DATA), k = S.kpi, dr = k.defect_rate_by_shop || {};
+    const e = metrics && metrics.effect, twinOut = e ? e.reactive.cars / e.days_per_seed / (e.shifts_per_day || 2) : null;
+    const avgArea = (area) => { const rs = A.quality.filter((r) => r.area === area); return rs.length ? rs.reduce((a, r) => a + r.defects, 0) / rs.reduce((a, r) => a + r.released, 0) : null; };
+    const avgFact = A.lines.reduce((a, r) => a + r.fact, 0) / Math.max(1, A.lines.length);
+    const shopArea = { welding: "Сварка", paint: "Окраска", assembly: "Сборка" };
+    const lim = A.tg.defect_rate_max;
+    const col = (v) => `style="color:${v > lim ? COLORS.down : COLORS.working}"`;
+    document.getElementById("data-twin").innerHTML = `
+      <div class="row"><span>${t("tw_plan")}</span><b>${DATA.lines[0] ? DATA.lines[0].plan : "—"} / ${k.plan}</b></div>
+      <div class="row"><span>${t("tw_shifts")}</span><b>${t("tw_shifts_val", { n: k.shifts_per_day })}</b></div>
+      <div class="row"><span>${t("tw_out")}</span><b>${n1(avgFact)} / ${twinOut ? n1(twinOut) : "—"}</b></div>
+      ${Object.entries(shopArea).map(([sh, ar]) => { const a = avgArea(ar); return a == null ? "" :
+        `<div class="row"><span>${t("tw_def", { area: dtr(ar) })}</span><b><span ${col(a)}>${pctL(a)}</span> / <span ${col(dr[sh] || 0)}>${pctL(dr[sh] || 0)}</span></b></div>`; }).join("")}
+      <div class="row"><span>${t("tw_equip")}</span><b class="small" style="text-align:right">${S.stations.filter((s) => /ABB|Камера|Конвейер/.test(s.equip || "")).map((s) => dtr(s.equip)).join(", ")}</b></div>
+      <p class="muted small">${t("tw_note")}</p>`;
+  }
+
+  // CSV import: recognizes each organizer table by its header row (';' or ',' separated, decimal comma allowed)
+  function parseCsv(text) {
+    const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+    if (!lines.length) return [];
+    const sep = lines[0].includes(";") ? ";" : lines[0].includes("\t") ? "\t" : ",";
+    const split = (l) => { const out = []; let cur = "", q = false;
+      for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur.trim()); cur = ""; } else cur += ch; }
+      out.push(cur.trim()); return out; };
+    return lines.map(split);
+  }
+  const numv = (x) => parseFloat(String(x).replace(/\s/g, "").replace(",", "."));
+  function tableFromCsv(rows) {
+    const h = rows[0].map((x) => x.toLowerCase());
+    const col = (...keys) => h.findIndex((c) => keys.some((k) => c.startsWith(k)));
+    const body = rows.slice(1).filter((r) => r.length >= 2);
+    if (col("линия") >= 0 && col("факт") >= 0) {
+      const [d, l, p, f, hr] = [col("дата"), col("линия"), col("план"), col("факт"), col("время")];
+      return ["lines", body.map((r) => ({ date: r[d], line: r[l], plan: numv(r[p]), fact: numv(r[f]), hours: numv(r[hr]) }))];
+    }
+    if (col("оборудование") >= 0) {
+      const [d, a, e, c, m] = [col("дата"), col("участок"), col("оборудование"), col("причина"), col("длительность")];
+      return ["downtime", body.map((r) => ({ date: r[d], area: r[a], equip: r[e], cause: r[c], minutes: numv(r[m]) }))];
+    }
+    if (col("модель") >= 0) {
+      const [m, q] = [col("модель"), col("план")];
+      return ["plan", body.map((r) => ({ model: r[m], qty: numv(r[q]) }))];
+    }
+    if (col("выпущено") >= 0 && col("брак") >= 0) {
+      const [d, a, rel, def] = [col("дата"), col("участок"), col("выпущено"), h.findIndex((c) => c === "брак")];
+      return ["quality", body.map((r) => ({ date: r[d], area: r[a], released: numv(r[rel]), defects: numv(r[def >= 0 ? def : col("брак")]) }))];
+    }
+    return [null, null];
+  }
+  document.getElementById("data-file").addEventListener("change", async (ev) => {
+    const files = [...ev.target.files];
+    if (!files.length || !DATA) return;
+    const next = JSON.parse(JSON.stringify(DATA)), names = [];
+    for (const f of files) {
+      const [kind, rows] = tableFromCsv(parseCsv(await f.text()));
+      if (!kind || !rows.length) { alert(t("data_import_err", { file: f.name })); continue; }
+      next[kind] = rows; names.push(f.name);
+    }
+    if (names.length) { DATA = next; dataFiles = (dataFiles || []).concat(names); renderData(); }
+    ev.target.value = "";
+  });
+  document.getElementById("data-reset").addEventListener("click", () => {
+    DATA = JSON.parse(JSON.stringify(window.ALLUR_DATA)); dataFiles = null; renderData();
+  });
+  document.getElementById("data-days").addEventListener("input", (e) => {
+    const v = Math.round(+e.target.value);
+    if (DATA && v >= 1 && v <= 31) { DATA.targets.working_days_month = v; renderData(); }
+  });
 
   // ------------------------------------------------------------------ station drawer
   async function openStation(id) {
@@ -405,10 +604,12 @@
     const body = document.getElementById("drawer-body");
     body.innerHTML = `
       <h2>${stName(s.id)}</h2>
-      <div class="muted">${t("shop_" + s.shop)}</div>
+      <div class="muted">${s.equip ? s.equip + " · " : ""}${t("shop_" + s.shop)}</div>
       <div class="section"><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span>
         ${s.state === "starved" ? `<span class="muted small"> ${t("s_hint_starved")}</span>` : s.state === "blocked" ? `<span class="muted small"> ${t("s_hint_blocked")}</span>` : ""}
-        ${s.down_left_min ? `<span class="small"> · ${s.down_left_min} ${t("minutes")}</span>` : ""}</div>
+        ${s.cause ? `<span class="small"> · ${t("c_" + s.cause)}</span>` : ""}
+        ${s.down_left_min ? `<span class="small"> · ${s.down_left_min} ${t("minutes")}</span>` : ""}
+        <div class="row" style="margin-top:6px"><span>${t("k_day_down")}</span><b style="color:${s.down_day_min > ((S.kpi.targets || {}).downtime_min_day || 60) ? COLORS.down : "inherit"}">${s.down_day_min} / ${(S.kpi.targets || {}).downtime_min_day || 60} ${t("minutes")}</b></div></div>
       ${ai ? `<div class="section">
         <div class="row"><span>${t("health")}</span><b>${pct(ai.health)}</b></div>
         <div class="row"><span>${t("risk2h")}</span><b style="color:${RISK[ai.level]}">${pct(ai.risk)}</b></div>
@@ -445,7 +646,7 @@
   }
 
   // ------------------------------------------------------------------ main render
-  let lastHist = 0, lastDrawer = 0;
+  let lastHist = 0, lastDrawer = 0, lastDataTwin = 0;
   function render() {
     renderKpis();
     renderMap();
@@ -456,6 +657,7 @@
     if (now - lastHist > 4000) { lastHist = now; refreshHistory(); }
     if (tab === "exec") renderExec();
     if (tab === "ai") renderAi();
+    if (tab === "data" && now - lastDataTwin > 3000) { lastDataTwin = now; renderDataTwin(); }
     if (selected && now - lastDrawer > 3000) { lastDrawer = now; renderDrawer(); }
   }
 
@@ -464,6 +666,7 @@
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + b.dataset.tab));
     if (b.dataset.tab === "ai") renderMetrics();
+    if (b.dataset.tab === "data") renderData();
     if (S) render();
   }));
   document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {

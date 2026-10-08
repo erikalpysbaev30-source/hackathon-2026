@@ -121,3 +121,12 @@ main { padding: 12px 18px 24px; }
 .drawer h2 { margin: 0 0 4px; font-size: 18px; }
 .drawer .section { margin-top: 14px; }
 .drawer .chart { height: 180px; }
+
+.scroll-x { overflow-x: auto; }
+.targets { padding: 12px 0 0; }
+.targets .kpi .sub2 { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.table td.bad { color: var(--down); font-weight: 600; }
+.table td.warn { color: var(--blocked); font-weight: 600; }
+.table td.good { color: var(--working); }
+.table tr.total td { border-top: 1px solid var(--line); font-weight: 600; }
+.feed li.good { border-color: var(--working); }

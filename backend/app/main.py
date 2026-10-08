@@ -76,8 +76,7 @@ class Twin:
 
     # ---------------------------------------------------------------- views
     def clock(self) -> dict:
-        t = self.plant.t
-        return {"t": t, "day": int(t // 86400) + 1, "hh": int(t % 86400 // 3600), "mm": int(t % 3600 // 60)}
+        return self.plant.calendar()
 
     def snapshot(self) -> dict:
         p = self.plant
@@ -87,7 +86,8 @@ class Twin:
         for sid in FLOW + ["RW"]:
             st = p.stations[sid]
             stations.append({
-                "id": sid, "shop": st.shop, "type": st.type, "state": st.state,
+                "id": sid, "equip": st.cfg.get("equip"), "shop": st.shop, "type": st.type, "state": st.state,
+                "cause": st.cause if st.state == "down" else None, "down_day_min": round(st.down_day_s / 60),
                 "x": st.cfg["x"], "y": st.cfg["y"], "units": len(st.units),
                 "busy": sum(1 for u in st.units if u.car), "buffer": len(st.buffer), "buffer_cap": st.buffer_cap,
                 "sensors": st.sensors, "kpi": p.station_kpis(st), "cycle": st.cycle,

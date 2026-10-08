@@ -3,7 +3,8 @@
 Compares two maintenance policies on identical random seeds:
   * reactive   - repair after breakdown (today's practice);
   * predictive - the twin's AI schedules a short planned maintenance when the
-                 predicted failure risk for the next 2 hours is high.
+                 predicted failure risk for the next 4 hours is high.
+A "day" is one working day of the plant (shifts_per_day shifts).
 
 Usage:  python scripts/evaluate_effect.py [days] [seeds]
 Writes backend/models/effect.json used by the dashboard and the slides.
@@ -26,7 +27,7 @@ def run(policy_factory, seed, days):
     start_t, start_n = p.t, p.produced_total
     n_dl, n_m = len(p.downtime_log), len(p.maint_log)
     ends = []
-    for _ in range(int(days * 24)):
+    for _ in range(int(days * p.workday / 3600)):  # a day = the plant's working hours (2 shifts)
         p.run(3600)
         ends += [e["params"] for e in p.events if e["kind"] == "shift_end"]
         p.events.clear()
@@ -51,7 +52,7 @@ def main():
     days = float(sys.argv[1]) if len(sys.argv) > 1 else 10
     seeds = range(101, 101 + (int(sys.argv[2]) if len(sys.argv) > 2 else 4))
     ai = TwinAI()
-    res = {"days_per_seed": days, "seeds": len(seeds)}
+    res = {"days_per_seed": days, "seeds": len(seeds), "shifts_per_day": Plant(seed=1, warmup_h=0).workday / 3600 / 8}
     for name, factory in [("reactive", None), ("predictive", lambda: predictive_policy(ai, threshold=THRESHOLD))]:
         rows = [run(factory, s, days) for s in seeds]
         res[name] = {k: round(statistics.fmean(r[k] for r in rows), 3) for k in rows[0]}

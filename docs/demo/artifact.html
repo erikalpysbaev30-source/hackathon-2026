@@ -125,6 +125,15 @@ main { padding: 12px 18px 24px; }
 .drawer .section { margin-top: 14px; }
 .drawer .chart { height: 180px; }
 
+.scroll-x { overflow-x: auto; }
+.targets { padding: 12px 0 0; }
+.targets .kpi .sub2 { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.table td.bad { color: var(--down); font-weight: 600; }
+.table td.warn { color: var(--blocked); font-weight: 600; }
+.table td.good { color: var(--working); }
+.table tr.total td { border-top: 1px solid var(--line); font-weight: 600; }
+.feed li.good { border-color: var(--working); }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
@@ -141,6 +150,7 @@ main { padding: 12px 18px 24px; }
     <button class="tab" data-tab="exec" data-i18n="tab_exec"></button>
     <button class="tab" data-tab="incidents"><span data-i18n="tab_incidents"></span> <span id="inc-badge" class="badge hidden">0</span></button>
     <button class="tab" data-tab="ai" data-i18n="tab_ai"></button>
+    <button class="tab" data-tab="data" data-i18n="tab_data"></button>
   </nav>
   <div class="controls">
     <div class="clock"><span id="clock">--:--</span><small id="clock-sub"></small></div>
@@ -244,6 +254,31 @@ main { padding: 12px 18px 24px; }
       <div class="card"><h3 data-i18n="calc_title"></h3><div id="calc"></div></div>
     </div>
   </section>
+
+  <!-- ORGANIZER DATA -->
+  <section class="view" id="view-data">
+    <div class="card">
+      <div class="card-head">
+        <h3 data-i18n="data_title"></h3>
+        <div class="filters">
+          <label class="btn primary"><span data-i18n="data_import"></span><input type="file" id="data-file" accept=".csv,text/csv" multiple hidden></label>
+          <button class="btn ghost" id="data-reset" data-i18n="data_reset"></button>
+        </div>
+      </div>
+      <p class="muted small" id="data-src" style="margin:8px 0 0"></p>
+    </div>
+    <div class="kpis targets" id="data-targets"></div>
+    <div class="grid3" style="margin-top:12px">
+      <div class="card span2"><h3 data-i18n="data_findings"></h3><ul class="feed" id="data-findings"></ul></div>
+      <div class="card"><h3 data-i18n="data_twin"></h3><div id="data-twin"></div></div>
+      <div class="card span2"><h3 data-i18n="data_lines"></h3><div class="scroll-x"><table class="table" id="data-lines"></table></div></div>
+      <div class="card"><h3 data-i18n="data_oee_chart"></h3><div class="chart"><canvas id="c-data-oee"></canvas></div></div>
+      <div class="card"><h3 data-i18n="data_quality"></h3><div class="chart"><canvas id="c-data-q"></canvas></div></div>
+      <div class="card"><h3 data-i18n="data_downtime"></h3><div class="scroll-x"><table class="table" id="data-down"></table></div></div>
+      <div class="card"><h3 data-i18n="data_plan"></h3><div class="scroll-x"><table class="table" id="data-plan"></table></div>
+        <div class="calc" style="margin-top:10px"><label><span data-i18n="data_days"></span><input type="number" id="data-days" min="1" max="31"></label></div></div>
+    </div>
+  </section>
 </main>
 
 <aside class="drawer" id="drawer">
@@ -251,7 +286,7 @@ main { padding: 12px 18px 24px; }
   <div id="drawer-body"></div>
 </aside>
 
-<script>window.LOCAL_DATA = {"config": {"name": "Allur Kostanay — line 1 (demo layout)", "tick_seconds": 10, "shift_hours": 8, "plan_per_shift": 80, "models": [{"id": "sedan", "mix": 0.4}, {"id": "crossover", "mix": 0.45}, {"id": "pickup", "mix": 0.15}], "shops": [{"id": "welding", "x": 30, "y": 60, "w": 310, "h": 180}, {"id": "paint", "x": 370, "y": 60, "w": 250, "h": 180}, {"id": "assembly", "x": 650, "y": 60, "w": 320, "h": 180}, {"id": "qc", "x": 650, "y": 280, "w": 320, "h": 195}, {"id": "logistics", "x": 30, "y": 280, "w": 590, "h": 195}], "parts": [{"id": "body_kit", "stock": 40, "max": 80, "delivery_every_min": 120, "delivery_qty": 26}, {"id": "engine", "stock": 30, "max": 60, "delivery_every_min": 180, "delivery_qty": 38}, {"id": "interior", "stock": 35, "max": 70, "delivery_every_min": 120, "delivery_qty": 26}, {"id": "wheels", "stock": 45, "max": 90, "delivery_every_min": 240, "delivery_qty": 52}], "stations": [{"id": "W1", "shop": "welding", "type": "robot_weld", "cycle": 250, "units": 1, "buffer": 4, "part": "body_kit", "mtbf_h": 30, "mttr_min": [30, 90], "defect": 0.0033, "x": 80, "y": 140}, {"id": "W2", "shop": "welding", "type": "robot_weld", "cycle": 260, "units": 1, "buffer": 4, "mtbf_h": 26, "mttr_min": [30, 100], "defect": 0.0044, "x": 150, "y": 140}, {"id": "W3", "shop": "welding", "type": "robot_weld", "cycle": 268, "units": 1, "buffer": 4, "mtbf_h": 22, "mttr_min": [40, 120], "defect": 0.0044, "x": 220, "y": 140}, {"id": "W4", "shop": "welding", "type": "metrology", "cycle": 240, "units": 1, "buffer": 4, "mtbf_h": 60, "mttr_min": [20, 45], "defect": 0.0, "x": 290, "y": 140}, {"id": "P1", "shop": "paint", "type": "pretreat", "cycle": 250, "units": 1, "buffer": 6, "mtbf_h": 50, "mttr_min": [30, 80], "defect": 0.0022, "x": 420, "y": 140}, {"id": "P2", "shop": "paint", "type": "paint_booth", "cycle": 298, "units": 1, "buffer": 6, "mtbf_h": 24, "mttr_min": [40, 110], "defect": 0.011, "x": 500, "y": 140}, {"id": "P3", "shop": "paint", "type": "oven", "cycle": 840, "units": 3, "buffer": 4, "mtbf_h": 70, "mttr_min": [60, 150], "defect": 0.0028, "x": 580, "y": 140}, {"id": "A1", "shop": "assembly", "type": "trim", "cycle": 275, "units": 1, "buffer": 6, "part": "interior", "mtbf_h": 45, "mttr_min": [15, 50], "defect": 0.0055, "x": 710, "y": 140}, {"id": "A2", "shop": "assembly", "type": "marriage", "cycle": 288, "units": 1, "buffer": 4, "part": "engine", "mtbf_h": 28, "mttr_min": [30, 90], "defect": 0.0044, "x": 810, "y": 140}, {"id": "A3", "shop": "assembly", "type": "final", "cycle": 270, "units": 1, "buffer": 4, "part": "wheels", "mtbf_h": 40, "mttr_min": [20, 60], "defect": 0.0055, "x": 910, "y": 140}, {"id": "Q1", "shop": "qc", "type": "alignment", "cycle": 240, "units": 1, "buffer": 4, "mtbf_h": 55, "mttr_min": [20, 60], "defect": 0.0, "x": 910, "y": 350}, {"id": "Q2", "shop": "qc", "type": "water_test", "cycle": 250, "units": 1, "buffer": 4, "mtbf_h": 80, "mttr_min": [20, 50], "defect": 0.0, "x": 810, "y": 350}, {"id": "Q3", "shop": "qc", "type": "inspection", "cycle": 230, "units": 1, "buffer": 4, "mtbf_h": 120, "mttr_min": [10, 30], "defect": 0.0, "inspection": true, "x": 710, "y": 350}, {"id": "RW", "shop": "qc", "type": "rework", "cycle": 1200, "units": 2, "buffer": 8, "mtbf_h": 200, "mttr_min": [10, 30], "defect": 0.0, "rework": true, "x": 710, "y": 432}, {"id": "L1", "shop": "logistics", "type": "yard", "cycle": 120, "units": 2, "buffer": 30, "mtbf_h": 500, "mttr_min": [10, 20], "defect": 0.0, "sink": true, "x": 470, "y": 390}], "sensor_baseline": {"robot_weld": {"vibration": 2.2, "temperature": 46, "current": 38}, "metrology": {"vibration": 0.6, "temperature": 24, "current": 6}, "pretreat": {"vibration": 1.4, "temperature": 52, "current": 55}, "paint_booth": {"vibration": 1.8, "temperature": 23, "current": 72}, "oven": {"vibration": 1.1, "temperature": 165, "current": 120}, "trim": {"vibration": 1.5, "temperature": 28, "current": 20}, "marriage": {"vibration": 2.6, "temperature": 34, "current": 44}, "final": {"vibration": 1.7, "temperature": 30, "current": 25}, "alignment": {"vibration": 1.2, "temperature": 26, "current": 15}, "water_test": {"vibration": 1.0, "temperature": 18, "current": 30}, "inspection": {"vibration": 0.4, "temperature": 24, "current": 4}, "rework": {"vibration": 0.8, "temperature": 25, "current": 8}, "yard": {"vibration": 0.5, "temperature": 15, "current": 5}}}, "model": {"features": ["vib_ratio", "temp_ratio", "cur_ratio", "vib_ratio_15", "temp_ratio_15", "vib_slope", "temp_slope", "cycle_drift", "age_ratio"], "mean": [1.1768742078738694, 1.049091348572453, 0.9452037105989086, 1.1748931080967666, 1.0492551097786473, 0.011213777897754913, -0.0001270217174464966, 1.0400752559988562, 0.5542020248221651], "scale": [0.3202100612173414, 0.04120257965188034, 0.21241156163649225, 0.28912668451385276, 0.03836912014066937, 0.26142026247373457, 0.020513479305738998, 0.029468445270571717, 0.34048169456499394], "clf_w": [1.2410303843610588, 0.23423363897983637, -0.5373176681350709, 0.4929402974449726, 1.283159792582932, -0.13644582874553574, 0.22553568536733523, -0.4918285742548976, -0.5859728871943104, -0.339238597949843, -0.054191163767519694, 0.3904542609844038, -0.005725913456082415, -0.22245735003193837, 0.04020914824972116, 0.019389869036833946, 0.16813640604617433, 0.10894763630541505], "clf_b": -3.24952957140192, "reg_w": [-0.05919463047826168, -0.02006854870894749, 0.02873618723581711, -0.027091731534294384, -0.10104874929176966, 0.006831574180675735, 0.003031128813121258, 0.0023919032616242825, -0.0586200711837752, 0.016386998340085907, -0.001628506056860021, -0.021270828978618653, 0.0003952414681570251, -0.0067892585617546925, -0.0015060353749333552, 0.000499069110879392, 0.004273689115713056, 0.01935851104184543], "reg_b": 0.5989248050051608, "healthy": [1.0158957219251337, 1.0057417582417583, 0.9925, 0.9993333333333334, 1.0059272486772488, 0.005266789794550055, -0.0004392136186902503, 1.0135149581015084, 0.08155902777777778], "metrics": {"roc_auc": 0.844, "lift_top10": 3.82, "recall_top10": 0.382, "samples": 47218, "health_mae": 0.019}}, "effect": {"days_per_seed": 10.0, "seeds": 4, "reactive": {"cars": 2450.25, "jph": 10.209, "breakdowns": 76.75, "breakdown_min": 4599.005, "maintenance_min": 0.0, "plan_hit": 0.617}, "predictive": {"cars": 2641.75, "jph": 11.007, "breakdowns": 37.25, "breakdown_min": 2084.161, "maintenance_min": 1362.5, "plan_hit": 0.883}, "delta": {"breakdown_min_pct": -54.7, "breakdowns_pct": -51.5, "output_pct": 7.82, "extra_cars_per_day": 19.15, "plan_hit_pp": 26.6}, "threshold": 0.35}};</script>
+<script>window.LOCAL_DATA = {"config": {"name": "Allur Kostanay — line 1 (calibrated to the organizers' test data)", "tick_seconds": 10, "shift_hours": 8, "shifts_per_day": 2, "plan_per_shift": 120, "targets": {"oee": 0.85, "defect_rate": 0.02, "downtime_min_day": 60, "plan_month": 5500, "working_days_month": 22}, "models": [{"id": "onix", "mix": 0.52}, {"id": "cobalt", "mix": 0.375}, {"id": "jac_j7", "mix": 0.105}], "shops": [{"id": "welding", "x": 30, "y": 60, "w": 310, "h": 180}, {"id": "paint", "x": 370, "y": 60, "w": 250, "h": 180}, {"id": "assembly", "x": 650, "y": 60, "w": 320, "h": 180}, {"id": "qc", "x": 650, "y": 280, "w": 320, "h": 195}, {"id": "logistics", "x": 30, "y": 280, "w": 590, "h": 195}], "parts": [{"id": "body_kit", "stock": 40, "max": 80, "delivery_every_min": 120, "delivery_qty": 36}, {"id": "engine", "stock": 30, "max": 60, "delivery_every_min": 180, "delivery_qty": 53}, {"id": "interior", "stock": 35, "max": 70, "delivery_every_min": 120, "delivery_qty": 36}, {"id": "wheels", "stock": 45, "max": 90, "delivery_every_min": 240, "delivery_qty": 72}], "stations": [{"id": "W1", "shop": "welding", "type": "robot_weld", "cycle": 180, "units": 1, "buffer": 4, "part": "body_kit", "mtbf_h": 30, "mttr_min": [15, 60], "defect": 0.0033, "x": 80, "y": 140, "equip": "ABB-01"}, {"id": "W2", "shop": "welding", "type": "robot_weld", "cycle": 187, "units": 1, "buffer": 4, "mtbf_h": 26, "mttr_min": [15, 60], "defect": 0.0044, "x": 150, "y": 140, "equip": "ABB-02"}, {"id": "W3", "shop": "welding", "type": "robot_weld", "cycle": 193, "units": 1, "buffer": 4, "mtbf_h": 22, "mttr_min": [20, 70], "defect": 0.0044, "x": 220, "y": 140, "equip": "ABB-03"}, {"id": "W4", "shop": "welding", "type": "metrology", "cycle": 173, "units": 1, "buffer": 4, "mtbf_h": 60, "mttr_min": [15, 40], "defect": 0.0, "x": 290, "y": 140, "equip": "ABB-04"}, {"id": "P1", "shop": "paint", "type": "pretreat", "cycle": 180, "units": 1, "buffer": 6, "mtbf_h": 50, "mttr_min": [20, 60], "defect": 0.0028, "x": 420, "y": 140, "equip": "Камера-01"}, {"id": "P2", "shop": "paint", "type": "paint_booth", "cycle": 215, "units": 1, "buffer": 6, "mtbf_h": 24, "mttr_min": [25, 65], "defect": 0.014, "x": 500, "y": 140, "equip": "Камера-02"}, {"id": "P3", "shop": "paint", "type": "oven", "cycle": 605, "units": 3, "buffer": 4, "mtbf_h": 70, "mttr_min": [30, 90], "defect": 0.0036, "x": 580, "y": 140, "equip": "Печь-01"}, {"id": "A1", "shop": "assembly", "type": "trim", "cycle": 198, "units": 1, "buffer": 6, "part": "interior", "mtbf_h": 45, "mttr_min": [15, 45], "defect": 0.0022, "x": 710, "y": 140, "equip": "Конвейер-01"}, {"id": "A2", "shop": "assembly", "type": "marriage", "cycle": 207, "units": 1, "buffer": 4, "part": "engine", "mtbf_h": 28, "mttr_min": [20, 60], "defect": 0.0018, "x": 810, "y": 140, "equip": "Конвейер-02"}, {"id": "A3", "shop": "assembly", "type": "final", "cycle": 194, "units": 1, "buffer": 4, "part": "wheels", "mtbf_h": 40, "mttr_min": [20, 60], "defect": 0.0022, "x": 910, "y": 140, "equip": "Конвейер-03"}, {"id": "Q1", "shop": "qc", "type": "alignment", "cycle": 173, "units": 1, "buffer": 4, "mtbf_h": 55, "mttr_min": [20, 60], "defect": 0.0, "x": 910, "y": 350, "equip": "Стенд-01"}, {"id": "Q2", "shop": "qc", "type": "water_test", "cycle": 180, "units": 1, "buffer": 4, "mtbf_h": 80, "mttr_min": [20, 50], "defect": 0.0, "x": 810, "y": 350, "equip": "Стенд-02"}, {"id": "Q3", "shop": "qc", "type": "inspection", "cycle": 166, "units": 1, "buffer": 4, "mtbf_h": 120, "mttr_min": [10, 30], "defect": 0.0, "inspection": true, "x": 710, "y": 350, "equip": "Пост ОТК-01"}, {"id": "RW", "shop": "qc", "type": "rework", "cycle": 864, "units": 2, "buffer": 8, "mtbf_h": 200, "mttr_min": [10, 30], "defect": 0.0, "rework": true, "x": 710, "y": 432, "equip": "Пост доработки"}, {"id": "L1", "shop": "logistics", "type": "yard", "cycle": 86, "units": 2, "buffer": 30, "mtbf_h": 500, "mttr_min": [10, 20], "defect": 0.0, "sink": true, "x": 470, "y": 390, "equip": "Площадка ГП"}], "sensor_baseline": {"robot_weld": {"vibration": 2.2, "temperature": 46, "current": 38}, "metrology": {"vibration": 0.6, "temperature": 24, "current": 6}, "pretreat": {"vibration": 1.4, "temperature": 52, "current": 55}, "paint_booth": {"vibration": 1.8, "temperature": 23, "current": 72}, "oven": {"vibration": 1.1, "temperature": 165, "current": 120}, "trim": {"vibration": 1.5, "temperature": 28, "current": 20}, "marriage": {"vibration": 2.6, "temperature": 34, "current": 44}, "final": {"vibration": 1.7, "temperature": 30, "current": 25}, "alignment": {"vibration": 1.2, "temperature": 26, "current": 15}, "water_test": {"vibration": 1.0, "temperature": 18, "current": 30}, "inspection": {"vibration": 0.4, "temperature": 24, "current": 4}, "rework": {"vibration": 0.8, "temperature": 25, "current": 8}, "yard": {"vibration": 0.5, "temperature": 15, "current": 5}}}, "model": {"features": ["vib_ratio", "temp_ratio", "cur_ratio", "vib_ratio_15", "temp_ratio_15", "vib_slope", "temp_slope", "cycle_drift", "age_ratio"], "mean": [1.1847282890293152, 1.048516422286738, 0.9548427191619411, 1.1845619395866167, 1.0484954283407921, 0.009919939627994237, -9.714180037923523e-05, 1.0396029129726725, 0.5296542184894342], "scale": [0.31774781126479434, 0.04109651582722618, 0.206834839242025, 0.2829374742116286, 0.03819947811677124, 0.2435783308376527, 0.021009782787263367, 0.029495439546740908, 0.331963358479063], "clf_w": [0.7829237022754668, 0.11759688091864147, -0.23636958932999697, 0.6484745169328305, 0.45562254891137816, -0.17415600141784846, 0.2866124910201243, -0.1606477128284358, -0.22919463499483336, -0.26610861647347644, 0.02110943421734967, 0.33355266832553027, 0.033977932086583375, 0.1881237826385081, 0.047518765375987905, 0.025447476700267254, 0.046084987585430545, -0.25189680952341875], "clf_b": -3.1107483711976713, "reg_w": [-0.05702740112077248, -0.01974601776940939, 0.02497248415843728, -0.03192652491666667, -0.09935830121433023, 0.007133761324907739, 0.002261716680436989, 0.005738212432793745, -0.059347383582159366, 0.01594890588364303, -0.0005533762524252943, -0.01982659838608139, 0.0008302712661642695, -0.007874299452160671, -0.0013110828412751711, 0.00046079965336945117, 0.004077950608577579, 0.019384446455634283], "reg_b": 0.6020099401209847, "healthy": [1.0167424242424241, 1.005618181818182, 0.9929246411483252, 0.9944242424242424, 1.0061438923395445, 0.0015363893416613951, -0.0003674690215074065, 1.0130239023131384, 0.07916666666666666], "metrics": {"roc_auc": 0.878, "lift_top10": 4.49, "recall_top10": 0.449, "samples": 47545, "health_mae": 0.018}}, "effect": {"days_per_seed": 10.0, "seeds": 4, "reactive": {"cars": 2356.5, "jph": 14.728, "breakdowns": 56.75, "breakdown_min": 2256.738, "maintenance_min": 0.0, "plan_hit": 0.475}, "predictive": {"cars": 2432.25, "jph": 15.202, "breakdowns": 28.5, "breakdown_min": 1152.452, "maintenance_min": 912.5, "plan_hit": 0.6}, "delta": {"breakdown_min_pct": -48.9, "breakdowns_pct": -49.8, "output_pct": 3.21, "extra_cars_per_day": 7.58, "plan_hit_pp": 12.5}, "threshold": 0.35, "shifts_per_day": 2}};</script>
 <script>
 // UI dictionary: Russian (default) and Korean.
 window.I18N = {
@@ -266,7 +301,7 @@ window.I18N = {
     k_downtime: "Аварийные простои, мин", k_wip: "НЗП, кузовов", k_attain: "Выполнение плана к текущему часу",
     k_rework: "на доработке",
     // shops & stations
-    shop_welding: "Сварочный цех", shop_paint: "Окрасочный цех", shop_assembly: "Сборочный цех", shop_qc: "Контроль качества (ОТК)", shop_logistics: "Склад и отгрузка",
+    shop_welding: "Сварочный цех · Сварка-1", shop_paint: "Окрасочный цех · Окраска-1", shop_assembly: "Сборочный цех · Сборка-1", shop_qc: "Контроль качества (ОТК)", shop_logistics: "Склад и отгрузка",
     st_W1: "Сварка основания", st_W2: "Сварка боковин", st_W3: "Сборка-сварка кузова", st_W4: "Контроль геометрии",
     st_P1: "Подготовка и ЭФГ", st_P2: "Окрасочная камера", st_P3: "Сушильная печь",
     st_A1: "Монтаж салона", st_A2: "Установка силового агрегата", st_A3: "Финальная сборка",
@@ -283,7 +318,7 @@ window.I18N = {
     // incidents
     sev_critical: "Критично", sev_warning: "Внимание", sev_info: "Инфо",
     stat_open: "Открыт", stat_ack: "Принят", stat_closed: "Закрыт",
-    i_breakdown: "{st}: аварийная остановка, ремонт ≈ {minutes} мин",
+    i_breakdown: "{st}: аварийная остановка{cause}, ремонт ≈ {minutes} мин",
     i_maintenance: "{st}: плановое ТО ({minutes} мин)",
     i_no_parts: "{st}: остановка — нет комплектующих «{part}»",
     i_delivery_missed: "Срыв поставки: {part}",
@@ -318,7 +353,7 @@ window.I18N = {
     // ai tab
     risk_table: "Состояние оборудования по оценке ИИ", station: "Участок", state: "Состояние", action: "Действие",
     model_card: "Модель прогнозирования отказов", model_desc: "Градиентный бустинг по данным датчиков (вибрация, температура, ток), дрейфу такта и времени с последнего ТО. Горизонт прогноза — 4 часа. Обучено на синтетической истории симулятора; на данных АЛЛЮР модель переобучается тем же конвейером.",
-    model_desc_lite: "Браузерная версия модели: логистическая регрессия по тем же признакам (вибрация, температура, ток, дрейф такта, время с последнего ТО), горизонт прогноза 4 часа. На сервере работает градиентный бустинг (ROC-AUC 0,85). Обучено на синтетической истории симулятора.",
+    model_desc_lite: "Браузерная версия модели: логистическая регрессия по тем же признакам (вибрация, температура, ток, дрейф такта, время с последнего ТО), горизонт прогноза 4 часа. На сервере работает градиентный бустинг (ROC-AUC 0,84). Обучено на синтетической истории симулятора.",
     m_auc: "ROC-AUC", m_lift: "Точность топ-10% выше случайной в", m_recall: "Доля отказов, пойманных в топ-10%", m_samples: "Обучающих примеров",
     effect_title: "Эффект: реактивное vs предиктивное ТО (симуляция)", effect_desc: "Одинаковые случайные сценарии, {days} дней × {seeds} прогонов. Предиктивная политика: ИИ ставит короткое ТО, когда риск отказа высокий.",
     reactive: "Реактивное ТО (сейчас)", predictive: "Предиктивное ТО (с двойником)",
@@ -327,6 +362,43 @@ window.I18N = {
     calc_downcost: "Стоимость часа простоя линии, ₸", calc_extra: "Доп. выпуск в год", calc_hours: "Сокращение аварийных простоев, ч/год",
     calc_money: "Эффект в год, ₸", calc_note: "Оценка на одну линию. Параметры можно менять; базовые значения — допущения команды.",
     export: "Экспорт CSV", calc_mln: "млн ₸",
+    // organizer data, targets, causes
+    tab_data: "Данные АЛЛЮР", target: "цель",
+    k_defect_shop: "Брак: сварка · окраска · сборка", k_defect_shop_hint: "Доля дефектов по участкам за смену",
+    k_day_down: "Макс. простой оборудования за сутки",
+    c_sensor_error: "ошибка датчика", c_servo_fault: "сбой сервопривода", c_tip_wear: "износ электродов", c_camera_fault: "сбой камеры контроля",
+    c_pump_fault: "отказ насоса", c_filter_change: "замена фильтра", c_atomizer_fault: "сбой распылителя", c_burner_fault: "сбой горелки",
+    c_chain_break: "обрыв цепи", c_drive_fault: "отказ привода",
+    i_downtime_near: "{st}: простой за сутки {minutes} мин — близко к лимиту {limit} мин",
+    i_downtime_limit: "{st}: простой за сутки {minutes} мин — превышен лимит {limit} мин",
+    data_title: "Тестовые данные АЛЛЮР: проверка по целевым показателям",
+    data_src_default: "Источник: тестовые данные организаторов кейса (01–02.10.2026). Можно загрузить свои CSV с теми же заголовками.",
+    data_src_user: "Источник: загруженные файлы — {files}", data_import: "Загрузить CSV", data_reset: "Данные организаторов",
+    data_import_err: "Не удалось распознать файл {file}: нужны заголовки как в шаблоне",
+    tg_oee: "OEE линий", tg_defect: "Брак по участкам", tg_down: "Простой критичного оборудования", tg_plan: "План выпуска в месяц",
+    tg_norm_min: "норма ≥ {v}", tg_norm_max: "норма ≤ {v}",
+    tg_oee_sub: "минимум; в среднем {avg}", tg_defect_sub: "максимум: {area}, {date}", tg_down_sub: "максимум: {equip}, {date}",
+    tg_plan_sub: "сумма плана по моделям; не хватает {gap}", tg_plan_sub_ok: "сумма плана по моделям",
+    tg_ok: "в норме", tg_bad: "нарушений: {n} из {m}",
+    data_findings: "Что показал двойник",
+    f_quality: "{area}: брак {rates} — выше нормы {limit}.",
+    f_oee_ok: "OEE всех линий в норме: от {min} до {max} (норма ≥ {limit}). Ближе всего к границе {line} {date}: {val}.",
+    f_oee_bad: "OEE ниже нормы {limit}: {list}.",
+    f_down_near: "{equip} ({date}): простой {m} мин — близко к лимиту {limit} мин.",
+    f_down_bad: "{equip} ({date}): простой {m} мин — лимит {limit} мин превышен.",
+    f_down_ok: "Все простои оборудования укладываются в {limit} мин в сутки.",
+    f_plan_models: "План по моделям ({models}) в сумме {sum} авто, это на {gap} меньше цели {target}.",
+    f_capacity: "При {per} авто за смену, {shifts} сменах и {days} рабочих днях линия даёт {rate} авто в месяц, а для цели {target} нужно {need} авто за смену.",
+    f_capacity_ok: "При {per} авто за смену, {shifts} сменах и {days} рабочих днях линия даёт {rate} авто в месяц, этого хватает на цель {target}.",
+    f_recon: "Журнал простоев не сходится с временем работы в {n} из {m} записей, например {line} {date}: потеряно {lost} мин рабочего времени, в журнале {logged} мин. Двойник сводит эти источники в одну картину.",
+    data_lines: "Работа линий и OEE", data_oee_chart: "OEE по линиям и дням", data_quality: "Брак по участкам",
+    data_downtime: "Простои оборудования", data_plan: "План на месяц", data_days: "Рабочих дней в месяце (допущение)",
+    col_date: "Дата", col_line: "Линия", col_plan: "План", col_fact: "Факт", col_hours: "Работа, ч", col_lost: "Потеряно / в журнале простоев, мин",
+    col_area: "Участок", col_released: "Выпущено", col_defects: "Брак", col_rate: "% брака", col_equip: "Оборудование", col_cause: "Причина",
+    col_minutes: "Мин", col_model: "Модель", col_qty: "План на месяц", total: "Итого", goal: "Цель",
+    data_twin: "Двойник откалиброван по этим данным", tw_plan: "План смены", tw_shifts: "Смены", tw_shifts_val: "{n} × 8 ч",
+    tw_out: "Выпуск за смену: данные / двойник", tw_def: "Брак, {area}: данные / двойник сейчас", tw_equip: "Оборудование в модели",
+    tw_note: "Двойник воспроизводит линии АЛЛЮР с их планом, сменами, оборудованием и уровнем брака, поэтому прогнозы и рекомендации ИИ относятся к этим условиям.",
   },
   ko: {
     app_title: "자동차 공장 디지털 트윈",
@@ -337,7 +409,7 @@ window.I18N = {
     k_produced: "교대 생산량", k_plan: "계획", k_jph: "시간당 생산(JPH)", k_oee: "라인 OEE (1시간)", k_fpy: "직행률 (FPY)",
     k_downtime: "고장 비가동, 분", k_wip: "재공 (WIP), 대", k_attain: "현재 시점 계획 달성률",
     k_rework: "수정 대기",
-    shop_welding: "차체(용접) 공장", shop_paint: "도장 공장", shop_assembly: "의장(조립) 공장", shop_qc: "품질 검사", shop_logistics: "부품 창고 및 출하",
+    shop_welding: "차체(용접) · 용접-1", shop_paint: "도장 · 도장-1", shop_assembly: "의장(조립) · 조립-1", shop_qc: "품질 검사", shop_logistics: "부품 창고 및 출하",
     st_W1: "언더바디 용접", st_W2: "사이드 패널 용접", st_W3: "차체 메인 용접", st_W4: "차체 치수 검사",
     st_P1: "전처리·전착", st_P2: "도장 부스", st_P3: "건조로",
     st_A1: "내장 조립", st_A2: "파워트레인 장착", st_A3: "최종 조립",
@@ -350,7 +422,7 @@ window.I18N = {
     d_trim_gap: "내장 단차", d_torque: "체결 토크 불량", d_fluid_leak: "누유·누수", d_other: "기타",
     sev_critical: "긴급", sev_warning: "주의", sev_info: "정보",
     stat_open: "미처리", stat_ack: "확인됨", stat_closed: "종료",
-    i_breakdown: "{st}: 고장 정지, 수리 약 {minutes}분",
+    i_breakdown: "{st}: 고장 정지{cause}, 수리 약 {minutes}분",
     i_maintenance: "{st}: 예방 정비 ({minutes}분)",
     i_no_parts: "{st}: '{part}' 부품 부족으로 정지",
     i_delivery_missed: "납품 지연: {part}",
@@ -381,7 +453,7 @@ window.I18N = {
     calculating: "계산 중…", produced: "생산", plan_line: "계획", minutes: "분", cars: "대",
     risk_table: "AI 설비 상태 평가", station: "공정", state: "상태", action: "조치",
     model_card: "고장 예측 모델", model_desc: "센서(진동·온도·전류), 사이클 타임 변화, 마지막 정비 후 경과 시간을 이용한 그래디언트 부스팅 모델. 예측 범위 4시간. 시뮬레이터의 합성 이력으로 학습했으며, ALLUR 실제 데이터로 같은 파이프라인에서 재학습합니다.",
-    model_desc_lite: "브라우저용 경량 모델: 같은 특징(진동, 온도, 전류, 사이클 타임 변화, 정비 후 경과 시간)을 이용한 로지스틱 회귀, 예측 범위 4시간. 서버 버전은 그래디언트 부스팅(ROC-AUC 0.85)을 사용합니다. 시뮬레이터의 합성 이력으로 학습했습니다.",
+    model_desc_lite: "브라우저용 경량 모델: 같은 특징(진동, 온도, 전류, 사이클 타임 변화, 정비 후 경과 시간)을 이용한 로지스틱 회귀, 예측 범위 4시간. 서버 버전은 그래디언트 부스팅(ROC-AUC 0.84)을 사용합니다. 시뮬레이터의 합성 이력으로 학습했습니다.",
     m_auc: "ROC-AUC", m_lift: "상위 10% 정밀도 (무작위 대비 배수)", m_recall: "상위 10%에서 포착한 고장 비율", m_samples: "학습 샘플 수",
     effect_title: "효과: 사후 정비 vs 예측 정비 (시뮬레이션)", effect_desc: "동일한 무작위 시나리오, {days}일 × {seeds}회 실행. 예측 정비: 고장 위험이 높을 때 AI가 짧은 정비를 지시.",
     reactive: "사후 정비 (현재)", predictive: "예측 정비 (디지털 트윈)",
@@ -390,8 +462,53 @@ window.I18N = {
     calc_downcost: "라인 비가동 시간당 비용, ₸", calc_extra: "연간 추가 생산", calc_hours: "고장 비가동 감소, 시간/년",
     calc_money: "연간 효과, ₸", calc_note: "1개 라인 기준. 값은 변경 가능하며 기본값은 팀의 가정입니다.",
     export: "CSV 내보내기", calc_mln: "백만 ₸",
+    tab_data: "ALLUR 데이터", target: "목표",
+    k_defect_shop: "불량률: 용접 · 도장 · 조립", k_defect_shop_hint: "교대 중 공정별 불량 비율",
+    k_day_down: "설비별 일일 최대 정지",
+    c_sensor_error: "센서 오류", c_servo_fault: "서보 이상", c_tip_wear: "전극 팁 마모", c_camera_fault: "비전 카메라 이상",
+    c_pump_fault: "펌프 고장", c_filter_change: "필터 교체", c_atomizer_fault: "도장기 이상", c_burner_fault: "버너 이상",
+    c_chain_break: "체인 끊김", c_drive_fault: "구동부 고장",
+    i_downtime_near: "{st}: 일일 정지 {minutes}분 — 한도 {limit}분에 근접",
+    i_downtime_limit: "{st}: 일일 정지 {minutes}분 — 한도 {limit}분 초과",
+    data_title: "ALLUR 테스트 데이터: 목표 지표 점검",
+    data_src_default: "출처: 주최 측 테스트 데이터 (2026.10.01–02). 같은 머리글의 CSV 파일을 직접 올릴 수 있습니다.",
+    data_src_user: "출처: 업로드한 파일 — {files}", data_import: "CSV 업로드", data_reset: "주최 측 데이터",
+    data_import_err: "{file} 파일을 인식하지 못했습니다: 양식과 같은 머리글이 필요합니다",
+    tg_oee: "라인 OEE", tg_defect: "공정별 불량률", tg_down: "핵심 설비 정지", tg_plan: "월간 생산 계획",
+    tg_norm_min: "기준 ≥ {v}", tg_norm_max: "기준 ≤ {v}",
+    tg_oee_sub: "최저; 평균 {avg}", tg_defect_sub: "최고: {area}, {date}", tg_down_sub: "최대: {equip}, {date}",
+    tg_plan_sub: "모델별 계획 합계; {gap}대 부족", tg_plan_sub_ok: "모델별 계획 합계",
+    tg_ok: "기준 충족", tg_bad: "위반 {n}/{m}건",
+    data_findings: "디지털 트윈 분석 결과",
+    f_quality: "{area}: 불량률 {rates} — 기준 {limit} 초과.",
+    f_oee_ok: "모든 라인의 OEE가 기준을 충족합니다: {min}–{max} (기준 ≥ {limit}). 경계에 가장 가까운 것은 {line} {date}: {val}.",
+    f_oee_bad: "OEE 기준 {limit} 미달: {list}.",
+    f_down_near: "{equip} ({date}): 정지 {m}분 — 한도 {limit}분에 근접.",
+    f_down_bad: "{equip} ({date}): 정지 {m}분 — 한도 {limit}분 초과.",
+    f_down_ok: "모든 설비 정지가 일일 {limit}분 이내입니다.",
+    f_plan_models: "모델별 계획({models}) 합계는 {sum}대로, 목표 {target}대보다 {gap}대 적습니다.",
+    f_capacity: "교대당 {per}대, 하루 {shifts}교대, {days}일 가동 시 월 {rate}대이며, 목표 {target}대에는 교대당 {need}대가 필요합니다.",
+    f_capacity_ok: "교대당 {per}대, 하루 {shifts}교대, {days}일 가동 시 월 {rate}대로 목표 {target}대를 충족합니다.",
+    f_recon: "정지 기록과 가동 시간이 {m}건 중 {n}건에서 일치하지 않습니다. 예: {line} {date}: 손실 {lost}분, 정지 기록 {logged}분. 디지털 트윈은 두 출처를 하나로 통합합니다.",
+    data_lines: "라인 가동 및 OEE", data_oee_chart: "라인·일자별 OEE", data_quality: "공정별 불량률",
+    data_downtime: "설비 정지", data_plan: "월간 계획", data_days: "월 가동일 (가정)",
+    col_date: "날짜", col_line: "라인", col_plan: "계획", col_fact: "실적", col_hours: "가동, 시간", col_lost: "손실 / 정지 기록, 분",
+    col_area: "공정", col_released: "생산", col_defects: "불량", col_rate: "불량률", col_equip: "설비", col_cause: "원인",
+    col_minutes: "분", col_model: "모델", col_qty: "월 계획", total: "합계", goal: "목표",
+    data_twin: "이 데이터로 보정된 디지털 트윈", tw_plan: "교대 계획", tw_shifts: "교대", tw_shifts_val: "{n} × 8시간",
+    tw_out: "교대 생산: 데이터 / 트윈", tw_def: "{area} 불량률: 데이터 / 트윈 현재", tw_equip: "모델 내 설비",
+    tw_note: "트윈은 ALLUR 라인의 계획, 교대, 설비, 불량 수준을 재현하므로 AI 예측과 권고가 이 조건에 맞춰집니다.",
   },
 };
+// Organizer data comes in Russian: translate area, equipment and cause names for the Korean UI.
+window.DATA_KO = [["Плановое ТО", "계획 정비"], ["Ошибка датчика", "센서 오류"], ["Замена фильтра", "필터 교체"], ["Обрыв цепи", "체인 끊김"],
+  ["Пост ОТК", "최종 검사대"], ["Пост доработки", "수정 작업대"], ["Площадка ГП", "완성차 야드"],
+  ["Сварка", "용접"], ["Окраска", "도장"], ["Сборка", "조립"], ["Камера", "도장 부스"], ["Конвейер", "컨베이어"], ["Печь", "건조로"], ["Стенд", "시험대"]];
+
+</script>
+<script>
+// Generated by scripts/build_allur_data.py from data/allur_test_data. Do not edit by hand.
+window.ALLUR_DATA = {"lines": [{"date": "01.10.2026", "line": "Сварка-1", "plan": 120.0, "fact": 118.0, "hours": 7.8, "load": 98.0}, {"date": "01.10.2026", "line": "Окраска-1", "plan": 120.0, "fact": 115.0, "hours": 7.5, "load": 94.0}, {"date": "01.10.2026", "line": "Сборка-1", "plan": 120.0, "fact": 121.0, "hours": 8.0, "load": 100.0}, {"date": "02.10.2026", "line": "Сварка-1", "plan": 120.0, "fact": 111.0, "hours": 7.2, "load": 91.0}, {"date": "02.10.2026", "line": "Окраска-1", "plan": 120.0, "fact": 116.0, "hours": 7.7, "load": 96.0}, {"date": "02.10.2026", "line": "Сборка-1", "plan": 120.0, "fact": 119.0, "hours": 7.9, "load": 99.0}], "downtime": [{"date": "01.10.2026", "area": "Сварка", "equip": "ABB-01", "cause": "Ошибка датчика", "minutes": 25.0}, {"date": "01.10.2026", "area": "Окраска", "equip": "Камера-02", "cause": "Замена фильтра", "minutes": 40.0}, {"date": "02.10.2026", "area": "Сборка", "equip": "Конвейер-03", "cause": "Обрыв цепи", "minutes": 55.0}, {"date": "02.10.2026", "area": "Сварка", "equip": "ABB-04", "cause": "Плановое ТО", "minutes": 30.0}], "plan": [{"model": "Chevrolet Onix", "qty": 2500.0}, {"model": "Chevrolet Cobalt", "qty": 1800.0}, {"model": "JAC J7", "qty": 500.0}], "quality": [{"date": "01.10.2026", "area": "Сварка", "released": 118.0, "defects": 2.0}, {"date": "01.10.2026", "area": "Окраска", "released": 115.0, "defects": 4.0}, {"date": "01.10.2026", "area": "Сборка", "released": 121.0, "defects": 1.0}, {"date": "02.10.2026", "area": "Сварка", "released": 111.0, "defects": 3.0}, {"date": "02.10.2026", "area": "Окраска", "released": 116.0, "defects": 6.0}, {"date": "02.10.2026", "area": "Сборка", "released": 119.0, "defects": 2.0}], "targets": {"shifts_per_day": 2, "shift_hours": 8, "oee_min": 0.85, "defect_rate_max": 0.02, "critical_downtime_min_per_day_max": 60, "plan_month_min": 5500, "working_days_month": 22}};
 
 </script>
 <script>
@@ -404,6 +521,12 @@ window.I18N = {
   const STATES = ["working", "starved", "blocked", "down", "maintenance", "no_parts"];
   const DEFECT_TYPES = { robot_weld: "weld_spot", pretreat: "surface_prep", paint_booth: "paint_run", oven: "paint_cure", trim: "trim_gap", marriage: "torque", final: "fluid_leak" };
   const SHIFT_OFFSET = 8 * 3600;
+  const DEFECT_SHOP = { weld_spot: "welding", surface_prep: "paint", paint_run: "paint", paint_cure: "paint", trim_gap: "assembly", torque: "assembly", fluid_leak: "assembly" };
+  const CAUSES = {
+    robot_weld: ["sensor_error", "servo_fault", "tip_wear"], metrology: ["sensor_error", "camera_fault"], pretreat: ["pump_fault", "sensor_error"],
+    paint_booth: ["filter_change", "atomizer_fault", "sensor_error"], oven: ["burner_fault", "sensor_error"],
+    trim: ["chain_break", "drive_fault"], marriage: ["chain_break", "drive_fault", "sensor_error"], final: ["chain_break", "drive_fault"],
+  };
 
   // seeded RNG (mulberry32) whose whole state is one integer, so a plant clones with structuredClone
   function rand(p) {
@@ -424,13 +547,14 @@ window.I18N = {
   function createPlant(cfg, seed = 7, startHour = 8, warmupH = 24) {
     const p = {
       cfg, seed: seed * 2654435761 | 0, dt: cfg.tick_seconds, t: startHour * 3600, shiftLen: cfg.shift_hours * 3600,
+      workday: (cfg.shifts_per_day || 3) * cfg.shift_hours * 3600, targets: cfg.targets || {},
       plan: cfg.plan_per_shift, stations: {}, parts: {}, supplyBlock: {}, carSeq: 0,
       producedShift: 0, producedTotal: 0, firstOk: 0, firstInspected: 0, defectsFound: {},
       completions: [], history: [], bnHist: [], events: [], minuteAcc: 0, downtimeLog: [], maintLog: [],
     };
     for (const s of cfg.stations) {
       p.stations[s.id] = {
-        id: s.id, shop: s.shop, type: s.type, cycle: s.cycle, nUnits: s.units || 1, x: s.x, y: s.y,
+        id: s.id, equip: s.equip || null, cause: null, downDay: 0, shop: s.shop, type: s.type, cycle: s.cycle, nUnits: s.units || 1, x: s.x, y: s.y,
         units: Array.from({ length: s.units || 1 }, () => ({ car: null, remaining: 0, cycle: 0 })),
         buffer: [], bufferCap: s.buffer || 4, part: s.part || null, mtbf: s.mtbf_h * 3600, mttr: s.mttr_min,
         defectRate: s.defect || 0, baseline: cfg.sensor_baseline[s.type], sink: !!s.sink,
@@ -441,6 +565,7 @@ window.I18N = {
     }
     for (const pt of cfg.parts) p.parts[pt.id] = Object.assign({}, pt, { nextDelivery: p.t + pt.delivery_every_min * 60 });
     p.shiftStart = shiftStart(p, p.t);
+    p.dayNo = workDay(p, p.t);
     for (const st of Object.values(p.stations)) {
       st.health = uniform(p, 0.45, 1.0);
       st.sinceMaint = (1 - st.health) * st.mtbf;
@@ -450,7 +575,13 @@ window.I18N = {
   }
 
   function shiftStart(p, t) { return Math.floor((t - SHIFT_OFFSET) / p.shiftLen) * p.shiftLen + SHIFT_OFFSET; }
-  function shiftNo(p) { return Math.floor((((p.t - SHIFT_OFFSET) % 86400) + 86400) % 86400 / p.shiftLen) + 1; }
+  function shiftNo(p) { return Math.floor((((p.t - SHIFT_OFFSET) % p.workday) + p.workday) % p.workday / p.shiftLen) + 1; }
+  function workDay(p, t) { return Math.floor((t - SHIFT_OFFSET) / p.workday); }
+  // plant time is working time only: map it to day number and wall-clock time
+  function calendar(p, t) {
+    const rel = t - SHIFT_OFFSET, wall = SHIFT_OFFSET + (((rel % p.workday) + p.workday) % p.workday);
+    return { t, day: Math.floor(rel / p.workday) + 1, hh: Math.floor(wall % 86400 / 3600), mm: Math.floor(wall % 3600 / 60) };
+  }
   function emit(p, kind, station, params) { p.events.push({ t: p.t, kind, station, params: params || {} }); }
   const wip = (st) => st.buffer.length + st.units.filter((u) => u.car).length;
 
@@ -476,8 +607,13 @@ window.I18N = {
     st.state = reason === "maintenance" ? "maintenance" : "down";
     st.repairLeft = minutes * 60;
     if (reason === "maintenance") p.maintLog.push({ t: p.t, station: st.id, minutes });
-    else { st.failures += 1; p.downtimeLog.push({ t: p.t, station: st.id, minutes, reason }); }
-    emit(p, "down", st.id, { reason, minutes: Math.round(minutes) });
+    else {
+      st.failures += 1;
+      const cs = CAUSES[st.type] || ["sensor_error"];
+      st.cause = cs[Math.floor(rand(p) * cs.length)];
+      p.downtimeLog.push({ t: p.t, station: st.id, minutes, reason, cause: st.cause });
+    }
+    emit(p, "down", st.id, { reason, minutes: Math.round(minutes), cause: reason === "maintenance" ? null : st.cause });
   }
   function forceFailure(p, sid, minutes) {
     const st = p.stations[sid];
@@ -509,6 +645,8 @@ window.I18N = {
       emit(p, "shift_end", null, { produced: p.producedShift, plan: p.plan });
       p.shiftStart = s; p.producedShift = 0; p.firstOk = p.firstInspected = 0; p.defectsFound = {};
       for (const st of Object.values(p.stations)) { st.tState = newTState(); st.done = st.good = st.failures = 0; st.busy = 0; }
+      const day = workDay(p, p.t);
+      if (day !== p.dayNo) { p.dayNo = day; for (const st of Object.values(p.stations)) st.downDay = 0; emit(p, "day_end", null, {}); }
     }
     p.minuteAcc += dt;
     if (p.minuteAcc >= 60) { p.minuteAcc -= 60; sampleMinute(p); }
@@ -558,7 +696,7 @@ window.I18N = {
     st.sinceMaint += dt;
     if (st.defectMult !== 1 && st.defectUntil && p.t > st.defectUntil) { st.defectMult = 1; st.defectUntil = 0; }
     if (st.state === "down" || st.state === "maintenance") {
-      st.repairLeft -= dt; st.tState[st.state] += dt; st.activePeriod += dt;
+      st.downDay += dt; st.repairLeft -= dt; st.tState[st.state] += dt; st.activePeriod += dt;
       updateSensors(p, st, 0);
       if (st.repairLeft <= 0) {
         const was = st.state;
@@ -647,6 +785,8 @@ window.I18N = {
   function kpis(p) {
     const elapsed = Math.max(p.t - p.shiftStart, 1), ptd = p.plan * elapsed / p.shiftLen;
     const sts = Object.values(p.stations);
+    const byShop = { welding: 0, paint: 0, assembly: 0 }, insp = Math.max(p.firstInspected, 1);
+    for (const [d, n] of Object.entries(p.defectsFound)) if (DEFECT_SHOP[d]) byShop[DEFECT_SHOP[d]] += n;
     return {
       produced: p.producedShift, plan: p.plan, plan_to_date: r(ptd, 1),
       attainment: ptd >= 5 ? r(p.producedShift / ptd, 3) : null,
@@ -656,7 +796,9 @@ window.I18N = {
       downtime_min: r(sts.reduce((a, s) => a + s.tState.down, 0) / 60, 1),
       maintenance_min: r(sts.reduce((a, s) => a + s.tState.maintenance, 0) / 60, 1),
       defects: Object.assign({}, p.defectsFound), rework_queue: wip(p.stations.RW), shift: shiftNo(p),
-      shift_elapsed: r(elapsed / p.shiftLen, 3),
+      shift_elapsed: r(elapsed / p.shiftLen, 3), inspected: p.firstInspected,
+      defect_rate_by_shop: Object.fromEntries(Object.entries(byShop).map(([k, v]) => [k, r(v / insp, 4)])),
+      shifts_per_day: Math.round(p.workday / p.shiftLen), targets: p.targets,
     };
   }
 
@@ -777,13 +919,15 @@ window.I18N = {
       const { kind: k, station: sid, params: pr } = e;
       if (k === "down") {
         if (pr.reason === "maintenance") openInc(im, p, "maintenance", "info", sid, { minutes: pr.minutes });
-        else openInc(im, p, "breakdown", "critical", sid, { minutes: pr.minutes });
+        else openInc(im, p, "breakdown", "critical", sid, { minutes: pr.minutes, cause: pr.cause });
         closeInc(im, p, "failure_risk", sid);
       } else if (k === "up") closeInc(im, p, pr.after === "down" ? "breakdown" : "maintenance", sid);
       else if (k === "no_parts") openInc(im, p, "no_parts", "critical", sid, { part: pr.part });
       else if (k === "delivery_missed") openInc(im, p, "delivery_missed", "warning", null, { part: pr.part });
       else if (k === "defect") im.defects.push([e.t, pr.defect, sid]);
-      else if (k === "shift_end") {
+      else if (k === "day_end") {
+        for (const inc of im.items) if ((inc.type === "downtime_near" || inc.type === "downtime_limit") && inc.status !== "closed") { inc.status = "closed"; inc.closed_t = p.t; }
+      } else if (k === "shift_end") {
         const inc = openInc(im, p, "shift_report", pr.produced >= pr.plan ? "info" : "warning", null, { produced: pr.produced, plan: pr.plan });
         inc.status = "closed"; inc.closed_t = p.t;
       }
@@ -794,6 +938,14 @@ window.I18N = {
       if (pt.stock <= 8) openInc(im, p, "low_stock", "warning", null, { part: pid, stock: pt.stock });
       else if (pt.stock >= 16) closeInc(im, p, "low_stock", null, pid);
       if (pt.stock >= 16) closeInc(im, p, "delivery_missed", null, pid);
+    }
+    // daily stoppage limit for critical equipment (organizer target: <= 60 min per day)
+    const limit = p.targets.downtime_min_day || 60;
+    for (const st of Object.values(p.stations)) {
+      if (st.id === "RW" || st.id === "L1") continue;
+      const m = st.downDay / 60;
+      if (m >= limit) { closeInc(im, p, "downtime_near", st.id); openInc(im, p, "downtime_limit", "critical", st.id, { minutes: Math.round(m), limit }); }
+      else if (m >= 0.75 * limit) openInc(im, p, "downtime_near", "warning", st.id, { minutes: Math.round(m), limit });
     }
     while (im.defects.length && im.defects[0][0] < p.t - 3600) im.defects.shift();
     const counts = {};
@@ -855,11 +1007,11 @@ window.I18N = {
       for (const k in share) share[k] = r(share[k] / bh.length, 3);
       const t = p.t;
       return {
-        clock: { t, day: Math.floor(t / 86400) + 1, hh: Math.floor(t % 86400 / 3600), mm: Math.floor(t % 3600 / 60) },
+        clock: calendar(p, t),
         speed: this.speed, paused: this.paused, kpi: kpis(p),
         stations: ORDER.map((id) => {
           const st = p.stations[id];
-          return { id, shop: st.shop, type: st.type, state: st.state, x: st.x, y: st.y, units: st.units.length,
+          return { id, equip: st.equip, cause: st.state === "down" ? st.cause : null, down_day_min: Math.round(st.downDay / 60), shop: st.shop, type: st.type, state: st.state, x: st.x, y: st.y, units: st.units.length,
             busy: st.units.filter((u) => u.car).length, buffer: st.buffer.length, buffer_cap: st.bufferCap, sensors: st.sensors,
             kpi: stationKpis(st), cycle: st.cycle, down_left_min: ["down", "maintenance"].includes(st.state) ? Math.round(st.repairLeft / 60) : 0,
             ai: this.a[id] || null };
@@ -932,11 +1084,20 @@ window.I18N = {
     return s;
   }
   const stName = (id) => id ? `${id} ${t("st_" + id)}` : "";
+  const equipOf = (id) => (S && (S.stations.find((x) => x.id === id) || {}).equip) || "";
+  const stFull = (id) => { const e = equipOf(id); return stName(id) + (e ? ` (${e})` : ""); };
+  // plant time counts working hours only (2 shifts from 08:00): map it to day and wall-clock time
+  const cal = (sec) => {
+    const wd = ((S && S.kpi.shifts_per_day) || 3) * 8 * 3600, rel = sec - 8 * 3600;
+    const wall = 8 * 3600 + (((rel % wd) + wd) % wd);
+    return { day: Math.floor(rel / wd) + 1, hh: Math.floor(wall % 86400 / 3600), mm: Math.floor(wall % 3600 / 60) };
+  };
   const fmtTime = (sec) => {
-    const d = Math.floor(sec / 86400) + 1, h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
-    return `${t("day")} ${d}, ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const c = cal(sec);
+    return `${t("day")} ${c.day}, ${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`;
   };
   const pct = (x, d = 0) => (x * 100).toFixed(d) + "%";
+  const pctL = (x, d = 1) => (x * 100).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
   const num = (x) => Number(x).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU");
 
   function applyLang() {
@@ -949,6 +1110,7 @@ window.I18N = {
     for (const k in charts) delete charts[k];
     if (S) render();
     renderMetrics();
+    if (document.querySelector(".tab.active").dataset.tab === "data") renderData();
   }
 
   // ------------------------------------------------------------------ connection
@@ -1004,17 +1166,25 @@ window.I18N = {
     const k = S.kpi;
     const attain = k.attainment;
     const cls = (v, g, w) => (v >= g ? "good" : v >= w ? "warn" : "bad");
+    const tg = k.targets || {}, oeeT = tg.oee || 0.85, defT = tg.defect_rate || 0.02, dayT = tg.downtime_min_day || 60;
+    const dr = k.defect_rate_by_shop || {};
+    const drHtml = ["welding", "paint", "assembly"].map((sh) =>
+      `<span style="color:${(dr[sh] || 0) > defT ? COLORS.down : COLORS.working}">${pctL(dr[sh] || 0)}</span>`).join("<small> · </small>");
+    const worst = S.stations.filter((s) => s.id !== "L1" && s.id !== "RW").reduce((a, s) => (!a || s.down_day_min > a.down_day_min ? s : a), null);
     const tiles = [
       { label: t("k_produced"), value: `${k.produced}<small> / ${k.plan} ${t("k_plan")}</small>`, bar: k.produced / k.plan },
       { label: t("k_attain"), value: attain == null ? "—" : pct(attain), cls: attain == null ? "" : cls(attain, 1, 0.92) },
       { label: t("k_jph"), value: k.jph },
-      { label: t("k_oee"), value: pct(k.oee), cls: cls(k.oee, 0.85, 0.7) },
+      { label: `${t("k_oee")} · ${t("target")} ≥ ${pct(oeeT)}`, value: pct(k.oee), cls: cls(k.oee, oeeT, oeeT - 0.1) },
+      { label: `${t("k_defect_shop")} · ≤ ${pct(defT)}`, value: `<span style="font-size:13px;white-space:nowrap">${drHtml}</span>`, title: t("k_defect_shop_hint") },
       { label: t("k_fpy"), value: pct(k.fpy, 1), cls: cls(k.fpy, 0.9, 0.8) },
+      { label: `${t("k_day_down")} · ≤ ${dayT} ${t("minutes")}`, value: worst ? `${worst.down_day_min}<small> ${t("minutes")} · ${worst.id}</small>` : "—",
+        cls: !worst ? "" : worst.down_day_min > dayT ? "bad" : worst.down_day_min >= 0.75 * dayT ? "warn" : "good" },
       { label: t("k_downtime"), value: Math.round(k.downtime_min), cls: k.downtime_min > 60 ? "bad" : k.downtime_min > 20 ? "warn" : "good" },
       { label: t("k_wip"), value: `${k.wip}<small> · ${k.rework_queue} ${t("k_rework")}</small>` },
     ];
     document.getElementById("kpis").innerHTML = tiles.map((x) =>
-      `<div class="kpi ${x.cls || ""}"><div class="label">${x.label}</div><div class="value">${x.value}</div>${x.bar !== undefined ? `<div class="bar"><i style="width:${Math.min(100, x.bar * 100)}%"></i></div>` : ""}</div>`).join("");
+      `<div class="kpi ${x.cls || ""}"${x.title ? ` title="${x.title}"` : ""}><div class="label">${x.label}</div><div class="value">${x.value}</div>${x.bar !== undefined ? `<div class="bar"><i style="width:${Math.min(100, x.bar * 100)}%"></i></div>` : ""}</div>`).join("");
     const c = S.clock;
     document.getElementById("clock").textContent = `${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`;
     document.getElementById("clock-sub").textContent = `${t("day")} ${c.day} · ${t("shift")} ${k.shift}`;
@@ -1117,7 +1287,9 @@ window.I18N = {
     if (p.risk !== undefined) p.risk = Math.round(p.risk * 100);
     if (p.health !== undefined) p.health = Math.round(p.health * 100);
     if (p.expected !== undefined) p.expected = Math.round(p.expected);
-    return t("i_" + i.type, Object.assign(p, { st: stName(i.station) }));
+    const cause = p.cause ? ` (${t("c_" + p.cause)})` : "";
+    p.cause = cause;
+    return t("i_" + i.type, Object.assign(p, { st: stFull(i.station) }));
   }
   function renderFeed() {
     const items = S.incidents.slice(0, 25);
@@ -1179,10 +1351,11 @@ window.I18N = {
     if (!charts[id]) charts[id] = new Chart(document.getElementById(id), cfg);
     else { charts[id].data = cfg.data; charts[id].update("none"); }
   }
-  const hhmm = (sec) => `${String(Math.floor(sec % 86400 / 3600)).padStart(2, "0")}:${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}`;
+  const hhmm = (sec) => { const c = cal(sec); return `${String(c.hh).padStart(2, "0")}:${String(c.mm).padStart(2, "0")}`; };
 
   function renderExec() {
     const shiftStart = S.clock.t - S.kpi.shift_elapsed * 8 * 3600;
+    const oeeT = (S.kpi.targets || {}).oee || 0.85;
     const hs = history.filter((x) => x.t > shiftStart);
     chart("c-output", {
       type: "line",
@@ -1205,7 +1378,7 @@ window.I18N = {
     chart("c-oee", {
       type: "bar",
       data: { labels: main.map((s) => s.id), datasets: [{ label: "OEE", data: main.map((s) => Math.round(s.kpi.oee * 100)),
-        backgroundColor: main.map((s) => s.kpi.oee >= 0.8 ? COLORS.working : s.kpi.oee >= 0.6 ? COLORS.blocked : COLORS.down) }] },
+        backgroundColor: main.map((s) => s.kpi.oee >= oeeT ? COLORS.working : s.kpi.oee >= oeeT - 0.2 ? COLORS.blocked : COLORS.down) }] },
       options: { plugins: { legend: { display: false } }, scales: { x: {}, y: { min: 0, max: 100 } } },
     });
     chart("c-losses", {
@@ -1241,7 +1414,7 @@ window.I18N = {
     const rows = S.stations.filter((s) => s.ai).sort((a, b) => b.ai.risk - a.ai.risk);
     document.querySelector("#risk-table tbody").innerHTML = rows.map((s) => {
       const hc = s.ai.health >= 0.7 ? COLORS.working : s.ai.health >= 0.45 ? COLORS.blocked : COLORS.down;
-      return `<tr><td><b>${s.id}</b> ${t("st_" + s.id)}</td>
+      return `<tr><td><b>${s.id}</b> ${t("st_" + s.id)}${s.equip ? `<div class="muted small">${s.equip}</div>` : ""}</td>
         <td><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span></td>
         <td><span class="meter"><i style="width:${s.ai.health * 100}%;background:${hc}"></i></span>${pct(s.ai.health)}</td>
         <td><span class="meter"><i style="width:${Math.min(100, s.ai.risk * 200)}%;background:${RISK[s.ai.level]}"></i></span>${pct(s.ai.risk)}</td>
@@ -1286,7 +1459,7 @@ window.I18N = {
         .map(([k, l]) => `<label><span>${t(l)}</span><input type="number" data-calc="${k}" value="${calcState[k]}"></label>`).join("") + `<div class="out" id="calc-out"></div>`;
       box.querySelectorAll("input").forEach((i) => i.addEventListener("input", () => { calcState[i.dataset.calc] = +i.value || 0; renderCalc(); }));
     }
-    const d = e.days_per_seed, perShift = (x) => x / d / 3;
+    const d = e.days_per_seed, perShift = (x) => x / d / (e.shifts_per_day || 2);
     const extraCars = (perShift(e.predictive.cars) - perShift(e.reactive.cars)) * calcState.shifts * calcState.days;
     const hours = (perShift(e.reactive.breakdown_min) - perShift(e.predictive.breakdown_min)) * calcState.shifts * calcState.days / 60;
     // downtime cost is counted only for the part of downtime not already reflected in extra output (half, conservative)
@@ -1297,6 +1470,184 @@ window.I18N = {
       <div class="row"><span>${t("calc_money")}</span><b class="big" style="font-size:22px">${num(Math.round(money / 1e6))} ${t("calc_mln")}</b></div>
       <p class="muted small">${t("calc_note")}</p>`;
   }
+
+  // ------------------------------------------------------------------ organizer data tab
+  // Same rules as backend/app/testdata.py: OEE = (run h / shift h) x min(1, fact / (plan/h x run h)) x (1 - defects / released).
+  let DATA = window.ALLUR_DATA ? JSON.parse(JSON.stringify(window.ALLUR_DATA)) : null;
+  let dataFiles = null;
+  const dtr = (x) => { if (lang !== "ko" || x == null) return x; let s = String(x); for (const [a, b] of window.DATA_KO || []) s = s.split(a).join(b); return s; };
+  const areaOf = (line) => String(line).split("-")[0].trim();
+  const n1 = (x) => Number(x).toLocaleString(lang === "ko" ? "ko-KR" : "ru-RU", { maximumFractionDigits: 1 });
+
+  function analyze(d) {
+    const tg = d.targets, sh = tg.shift_hours;
+    const q = {};
+    for (const r of d.quality) q[r.date + "|" + r.area] = r;
+    const down = {};
+    for (const r of d.downtime) { const k = r.date + "|" + r.equip; down[k] = down[k] || { date: r.date, equip: r.equip, area: r.area, minutes: 0, causes: [] }; down[k].minutes += r.minutes; down[k].causes.push(r.cause); }
+    const logged = {};
+    for (const r of d.downtime) logged[r.date + "|" + r.area] = (logged[r.date + "|" + r.area] || 0) + r.minutes;
+    const lines = d.lines.map((r) => {
+      const a = r.hours / sh, perf = r.hours ? Math.min(1, r.fact / (r.plan / sh * r.hours)) : 0;
+      const qr = q[r.date + "|" + areaOf(r.line)], qual = qr && qr.released ? 1 - qr.defects / qr.released : 1;
+      const lost = Math.round((sh - r.hours) * 60), log = logged[r.date + "|" + areaOf(r.line)] || 0;
+      return Object.assign({}, r, { availability: a, performance: perf, quality: qual, oee: a * perf * qual, lost, logged: log });
+    });
+    const quality = d.quality.map((r) => Object.assign({}, r, { rate: r.released ? r.defects / r.released : 0 }));
+    const downs = Object.values(down);
+    const planTotal = d.plan.reduce((a, r) => a + r.qty, 0);
+    const lastArea = d.lines.length ? areaOf(d.lines[d.lines.length - 1].line) : null;
+    const fin = d.lines.filter((r) => areaOf(r.line) === lastArea);
+    const perShift = fin.length ? fin.reduce((a, r) => a + r.fact, 0) / fin.length : 0;
+    const days = tg.working_days_month;
+    return { tg, lines, quality, downs, planTotal, perShift, runRate: Math.round(perShift * tg.shifts_per_day * days),
+      needPerShift: tg.plan_month_min / (tg.shifts_per_day * days) };
+  }
+
+  function renderData() {
+    if (!DATA) return;
+    const A = analyze(DATA), tg = A.tg, lim = tg.critical_downtime_min_per_day_max;
+    document.getElementById("data-src").textContent = dataFiles ? t("data_src_user", { files: dataFiles.join(", ") }) : t("data_src_default");
+    const days = document.getElementById("data-days");
+    if (document.activeElement !== days) days.value = tg.working_days_month;
+    // target cards
+    const card = (label, norm, value, sub, ok, nBad, nAll) => `<div class="kpi ${ok ? "good" : "bad"}"><div class="label">${label} · ${norm}</div>
+      <div class="value">${value}</div><div class="sub2">${sub}</div><div class="sub2"><b>${ok ? t("tg_ok") : t("tg_bad", { n: nBad, m: nAll })}</b></div></div>`;
+    const minO = A.lines.reduce((a, r) => (!a || r.oee < a.oee ? r : a), null);
+    const avgO = A.lines.reduce((a, r) => a + r.oee, 0) / Math.max(1, A.lines.length);
+    const maxQ = A.quality.reduce((a, r) => (!a || r.rate > a.rate ? r : a), null);
+    const maxD = A.downs.reduce((a, r) => (!a || r.minutes > a.minutes ? r : a), null);
+    const badO = A.lines.filter((r) => r.oee < tg.oee_min).length, badQ = A.quality.filter((r) => r.rate > tg.defect_rate_max).length;
+    const badD = A.downs.filter((r) => r.minutes > lim).length, gap = tg.plan_month_min - A.planTotal;
+    document.getElementById("data-targets").innerHTML = [
+      minO ? card(t("tg_oee"), t("tg_norm_min", { v: pct(tg.oee_min) }), pctL(minO.oee), t("tg_oee_sub", { avg: pctL(avgO) }), !badO, badO, A.lines.length) : "",
+      maxQ ? card(t("tg_defect"), t("tg_norm_max", { v: pct(tg.defect_rate_max) }), pctL(maxQ.rate), t("tg_defect_sub", { area: dtr(maxQ.area), date: maxQ.date }), !badQ, badQ, A.quality.length) : "",
+      maxD ? card(t("tg_down"), t("tg_norm_max", { v: `${lim} ${t("minutes")}` }), `${maxD.minutes}<small> ${t("minutes")}</small>`, t("tg_down_sub", { equip: dtr(maxD.equip), date: maxD.date }), !badD, badD, A.downs.length) : "",
+      card(t("tg_plan"), t("tg_norm_min", { v: num(tg.plan_month_min) }), num(A.planTotal), gap > 0 ? t("tg_plan_sub", { gap: num(gap) }) : t("tg_plan_sub_ok"), gap <= 0, gap > 0 ? 1 : 0, 1),
+    ].join("");
+    // findings
+    const F = [];
+    const byArea = {};
+    for (const r of A.quality) if (r.rate > tg.defect_rate_max) (byArea[r.area] = byArea[r.area] || []).push(r);
+    for (const [area, rs] of Object.entries(byArea).sort((a, b) => b[1].length - a[1].length))
+      F.push(["critical", t("f_quality", { area: dtr(area), rates: rs.map((r) => `${pctL(r.rate)} (${r.date})`).join(", "), limit: pct(tg.defect_rate_max) })]);
+    if (gap > 0) F.push(["critical", t("f_plan_models", { models: DATA.plan.map((r) => `${r.model} ${num(r.qty)}`).join(", "), sum: num(A.planTotal), gap: num(gap), target: num(tg.plan_month_min) })]);
+    F.push([A.runRate >= tg.plan_month_min ? "good" : "warning", t(A.runRate >= tg.plan_month_min ? "f_capacity_ok" : "f_capacity", { per: n1(A.perShift), shifts: tg.shifts_per_day, days: tg.working_days_month,
+      rate: num(A.runRate), target: num(tg.plan_month_min), need: n1(Math.ceil(A.needPerShift * 10) / 10) })]);
+    for (const r of A.downs.filter((x) => x.minutes > lim)) F.push(["critical", t("f_down_bad", { equip: dtr(r.equip), date: r.date, m: r.minutes, limit: lim })]);
+    for (const r of A.downs.filter((x) => x.minutes <= lim && x.minutes >= 0.75 * lim)) F.push(["warning", t("f_down_near", { equip: dtr(r.equip), date: r.date, m: r.minutes, limit: lim })]);
+    if (!A.downs.some((x) => x.minutes >= 0.75 * lim)) F.push(["good", t("f_down_ok", { limit: lim })]);
+    if (badO) F.push(["warning", t("f_oee_bad", { limit: pct(tg.oee_min), list: A.lines.filter((r) => r.oee < tg.oee_min).map((r) => `${dtr(r.line)} ${r.date}: ${pctL(r.oee)}`).join(", ") })]);
+    else if (minO) F.push(["good", t("f_oee_ok", { min: pctL(minO.oee), max: pctL(Math.max(...A.lines.map((r) => r.oee))), limit: pct(tg.oee_min), line: dtr(minO.line), date: minO.date, val: pctL(minO.oee) })]);
+    const mism = A.lines.filter((r) => Math.abs(r.lost - r.logged) >= 15).sort((a, b) => Math.abs(b.lost - b.logged) - Math.abs(a.lost - a.logged));
+    if (mism.length) F.push(["info", t("f_recon", { n: mism.length, m: A.lines.length, line: dtr(mism[0].line), date: mism[0].date, lost: mism[0].lost, logged: mism[0].logged })]);
+    document.getElementById("data-findings").innerHTML = F.map(([sev, txt]) => `<li class="${sev}">${txt}</li>`).join("");
+    // tables
+    const cl = (ok, warn) => (ok ? "good" : warn ? "warn" : "bad");
+    document.getElementById("data-lines").innerHTML = `<thead><tr><th>${t("col_date")}</th><th>${t("col_line")}</th><th>${t("col_plan")}</th><th>${t("col_fact")}</th><th>${t("col_hours")}</th>
+      <th>${t("availability")}</th><th>${t("quality")}</th><th>OEE</th><th>${t("col_lost")}</th></tr></thead><tbody>` +
+      A.lines.map((r) => `<tr><td>${r.date}</td><td>${dtr(r.line)}</td><td>${r.plan}</td><td>${r.fact}</td><td>${n1(r.hours)}</td>
+        <td>${pctL(r.availability)}</td><td class="${cl(1 - r.quality <= tg.defect_rate_max)}">${pctL(r.quality)}</td>
+        <td class="${cl(r.oee >= tg.oee_min + 0.03, r.oee >= tg.oee_min)}">${pctL(r.oee)}</td>
+        <td class="${Math.abs(r.lost - r.logged) >= 15 ? "warn" : ""}">${r.lost} / ${r.logged}</td></tr>`).join("") + "</tbody>";
+    document.getElementById("data-down").innerHTML = `<thead><tr><th>${t("col_date")}</th><th>${t("col_equip")}</th><th>${t("col_cause")}</th><th>${t("col_minutes")}</th></tr></thead><tbody>` +
+      DATA.downtime.map((r) => { const tot = A.downs.find((x) => x.date === r.date && x.equip === r.equip).minutes;
+        return `<tr><td>${r.date}</td><td>${dtr(r.equip)}<div class="muted small">${dtr(r.area)}</div></td><td>${dtr(r.cause)}</td>
+        <td class="${cl(tot < 0.75 * lim, tot <= lim)}">${r.minutes}</td></tr>`; }).join("") + "</tbody>";
+    document.getElementById("data-plan").innerHTML = `<thead><tr><th>${t("col_model")}</th><th>${t("col_qty")}</th></tr></thead><tbody>` +
+      DATA.plan.map((r) => `<tr><td>${r.model}</td><td>${num(r.qty)}</td></tr>`).join("") +
+      `<tr class="total"><td>${t("total")}</td><td class="${cl(gap <= 0)}">${num(A.planTotal)}</td></tr>
+       <tr><td>${t("goal")}</td><td>${num(tg.plan_month_min)}</td></tr></tbody>`;
+    // charts
+    const dates = [...new Set(A.lines.map((r) => r.date))], lineNames = [...new Set(A.lines.map((r) => r.line))];
+    const palette = [css("--accent"), css("--accent2"), css("--maintenance"), css("--blocked")];
+    if (charts["c-data-oee"]) { charts["c-data-oee"].destroy(); delete charts["c-data-oee"]; }
+    chart("c-data-oee", { type: "bar", data: { labels: lineNames.map(dtr), datasets: dates.map((dt, i) => ({ label: dt, backgroundColor: palette[i % 4],
+        data: lineNames.map((ln) => { const r = A.lines.find((x) => x.line === ln && x.date === dt); return r ? +(r.oee * 100).toFixed(1) : null; }) }))
+        .concat([{ type: "line", label: `${t("target")} ${pct(tg.oee_min)}`, data: lineNames.map(() => tg.oee_min * 100), borderColor: COLORS.down, borderDash: [6, 4], pointRadius: 0 }]) },
+      options: { scales: { x: {}, y: { min: 70, max: 100 } } } });
+    const areas = [...new Set(A.quality.map((r) => r.area))];
+    if (charts["c-data-q"]) { charts["c-data-q"].destroy(); delete charts["c-data-q"]; }
+    chart("c-data-q", { type: "bar", data: { labels: areas.map(dtr), datasets: [...new Set(A.quality.map((r) => r.date))].map((dt, i) => ({ label: dt,
+        data: areas.map((ar) => { const r = A.quality.find((x) => x.area === ar && x.date === dt); return r ? +(r.rate * 100).toFixed(1) : null; }),
+        backgroundColor: areas.map((ar) => { const r = A.quality.find((x) => x.area === ar && x.date === dt); return r && r.rate > tg.defect_rate_max ? (i ? "#f87171" : COLORS.down) : (i ? "#4ade80" : COLORS.working); }) }))
+        .concat([{ type: "line", label: `${t("tg_norm_max", { v: pct(tg.defect_rate_max) })}`, data: areas.map(() => tg.defect_rate_max * 100), borderColor: COLORS.blocked, borderDash: [6, 4], pointRadius: 0 }]) },
+      options: { scales: { x: {}, y: { beginAtZero: true } } } });
+    renderDataTwin();
+  }
+
+  // live comparison: the twin's calibration against the organizer data
+  function renderDataTwin() {
+    if (!DATA || !S) return;
+    const A = analyze(DATA), k = S.kpi, dr = k.defect_rate_by_shop || {};
+    const e = metrics && metrics.effect, twinOut = e ? e.reactive.cars / e.days_per_seed / (e.shifts_per_day || 2) : null;
+    const avgArea = (area) => { const rs = A.quality.filter((r) => r.area === area); return rs.length ? rs.reduce((a, r) => a + r.defects, 0) / rs.reduce((a, r) => a + r.released, 0) : null; };
+    const avgFact = A.lines.reduce((a, r) => a + r.fact, 0) / Math.max(1, A.lines.length);
+    const shopArea = { welding: "Сварка", paint: "Окраска", assembly: "Сборка" };
+    const lim = A.tg.defect_rate_max;
+    const col = (v) => `style="color:${v > lim ? COLORS.down : COLORS.working}"`;
+    document.getElementById("data-twin").innerHTML = `
+      <div class="row"><span>${t("tw_plan")}</span><b>${DATA.lines[0] ? DATA.lines[0].plan : "—"} / ${k.plan}</b></div>
+      <div class="row"><span>${t("tw_shifts")}</span><b>${t("tw_shifts_val", { n: k.shifts_per_day })}</b></div>
+      <div class="row"><span>${t("tw_out")}</span><b>${n1(avgFact)} / ${twinOut ? n1(twinOut) : "—"}</b></div>
+      ${Object.entries(shopArea).map(([sh, ar]) => { const a = avgArea(ar); return a == null ? "" :
+        `<div class="row"><span>${t("tw_def", { area: dtr(ar) })}</span><b><span ${col(a)}>${pctL(a)}</span> / <span ${col(dr[sh] || 0)}>${pctL(dr[sh] || 0)}</span></b></div>`; }).join("")}
+      <div class="row"><span>${t("tw_equip")}</span><b class="small" style="text-align:right">${S.stations.filter((s) => /ABB|Камера|Конвейер/.test(s.equip || "")).map((s) => dtr(s.equip)).join(", ")}</b></div>
+      <p class="muted small">${t("tw_note")}</p>`;
+  }
+
+  // CSV import: recognizes each organizer table by its header row (';' or ',' separated, decimal comma allowed)
+  function parseCsv(text) {
+    const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+    if (!lines.length) return [];
+    const sep = lines[0].includes(";") ? ";" : lines[0].includes("\t") ? "\t" : ",";
+    const split = (l) => { const out = []; let cur = "", q = false;
+      for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur.trim()); cur = ""; } else cur += ch; }
+      out.push(cur.trim()); return out; };
+    return lines.map(split);
+  }
+  const numv = (x) => parseFloat(String(x).replace(/\s/g, "").replace(",", "."));
+  function tableFromCsv(rows) {
+    const h = rows[0].map((x) => x.toLowerCase());
+    const col = (...keys) => h.findIndex((c) => keys.some((k) => c.startsWith(k)));
+    const body = rows.slice(1).filter((r) => r.length >= 2);
+    if (col("линия") >= 0 && col("факт") >= 0) {
+      const [d, l, p, f, hr] = [col("дата"), col("линия"), col("план"), col("факт"), col("время")];
+      return ["lines", body.map((r) => ({ date: r[d], line: r[l], plan: numv(r[p]), fact: numv(r[f]), hours: numv(r[hr]) }))];
+    }
+    if (col("оборудование") >= 0) {
+      const [d, a, e, c, m] = [col("дата"), col("участок"), col("оборудование"), col("причина"), col("длительность")];
+      return ["downtime", body.map((r) => ({ date: r[d], area: r[a], equip: r[e], cause: r[c], minutes: numv(r[m]) }))];
+    }
+    if (col("модель") >= 0) {
+      const [m, q] = [col("модель"), col("план")];
+      return ["plan", body.map((r) => ({ model: r[m], qty: numv(r[q]) }))];
+    }
+    if (col("выпущено") >= 0 && col("брак") >= 0) {
+      const [d, a, rel, def] = [col("дата"), col("участок"), col("выпущено"), h.findIndex((c) => c === "брак")];
+      return ["quality", body.map((r) => ({ date: r[d], area: r[a], released: numv(r[rel]), defects: numv(r[def >= 0 ? def : col("брак")]) }))];
+    }
+    return [null, null];
+  }
+  document.getElementById("data-file").addEventListener("change", async (ev) => {
+    const files = [...ev.target.files];
+    if (!files.length || !DATA) return;
+    const next = JSON.parse(JSON.stringify(DATA)), names = [];
+    for (const f of files) {
+      const [kind, rows] = tableFromCsv(parseCsv(await f.text()));
+      if (!kind || !rows.length) { alert(t("data_import_err", { file: f.name })); continue; }
+      next[kind] = rows; names.push(f.name);
+    }
+    if (names.length) { DATA = next; dataFiles = (dataFiles || []).concat(names); renderData(); }
+    ev.target.value = "";
+  });
+  document.getElementById("data-reset").addEventListener("click", () => {
+    DATA = JSON.parse(JSON.stringify(window.ALLUR_DATA)); dataFiles = null; renderData();
+  });
+  document.getElementById("data-days").addEventListener("input", (e) => {
+    const v = Math.round(+e.target.value);
+    if (DATA && v >= 1 && v <= 31) { DATA.targets.working_days_month = v; renderData(); }
+  });
 
   // ------------------------------------------------------------------ station drawer
   async function openStation(id) {
@@ -1314,10 +1665,12 @@ window.I18N = {
     const body = document.getElementById("drawer-body");
     body.innerHTML = `
       <h2>${stName(s.id)}</h2>
-      <div class="muted">${t("shop_" + s.shop)}</div>
+      <div class="muted">${s.equip ? s.equip + " · " : ""}${t("shop_" + s.shop)}</div>
       <div class="section"><span class="pill" style="background:${COLORS[s.state]}">${t("s_" + s.state)}</span>
         ${s.state === "starved" ? `<span class="muted small"> ${t("s_hint_starved")}</span>` : s.state === "blocked" ? `<span class="muted small"> ${t("s_hint_blocked")}</span>` : ""}
-        ${s.down_left_min ? `<span class="small"> · ${s.down_left_min} ${t("minutes")}</span>` : ""}</div>
+        ${s.cause ? `<span class="small"> · ${t("c_" + s.cause)}</span>` : ""}
+        ${s.down_left_min ? `<span class="small"> · ${s.down_left_min} ${t("minutes")}</span>` : ""}
+        <div class="row" style="margin-top:6px"><span>${t("k_day_down")}</span><b style="color:${s.down_day_min > ((S.kpi.targets || {}).downtime_min_day || 60) ? COLORS.down : "inherit"}">${s.down_day_min} / ${(S.kpi.targets || {}).downtime_min_day || 60} ${t("minutes")}</b></div></div>
       ${ai ? `<div class="section">
         <div class="row"><span>${t("health")}</span><b>${pct(ai.health)}</b></div>
         <div class="row"><span>${t("risk2h")}</span><b style="color:${RISK[ai.level]}">${pct(ai.risk)}</b></div>
@@ -1354,7 +1707,7 @@ window.I18N = {
   }
 
   // ------------------------------------------------------------------ main render
-  let lastHist = 0, lastDrawer = 0;
+  let lastHist = 0, lastDrawer = 0, lastDataTwin = 0;
   function render() {
     renderKpis();
     renderMap();
@@ -1365,6 +1718,7 @@ window.I18N = {
     if (now - lastHist > 4000) { lastHist = now; refreshHistory(); }
     if (tab === "exec") renderExec();
     if (tab === "ai") renderAi();
+    if (tab === "data" && now - lastDataTwin > 3000) { lastDataTwin = now; renderDataTwin(); }
     if (selected && now - lastDrawer > 3000) { lastDrawer = now; renderDrawer(); }
   }
 
@@ -1373,6 +1727,7 @@ window.I18N = {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + b.dataset.tab));
     if (b.dataset.tab === "ai") renderMetrics();
+    if (b.dataset.tab === "data") renderData();
     if (S) render();
   }));
   document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {

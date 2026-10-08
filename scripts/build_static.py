@@ -30,7 +30,7 @@ def main():
         f'<script src="{CHART}"></script>\n'
         + body
         + f"<script>window.LOCAL_DATA = {json.dumps(data, ensure_ascii=False)};</script>\n"
-        + "".join(f"<script>\n{inline(n)}\n</script>\n" for n in ("i18n.js", "engine.js", "app.js"))
+        + "".join(f"<script>\n{inline(n)}\n</script>\n" for n in ("i18n.js", "allur_data.js", "engine.js", "app.js"))
     )
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "artifact.html").write_text(content, encoding="utf-8")

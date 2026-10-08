@@ -1,0 +1,9 @@
+{
+  "shifts_per_day": 2,
+  "shift_hours": 8,
+  "oee_min": 0.85,
+  "defect_rate_max": 0.02,
+  "critical_downtime_min_per_day_max": 60,
+  "plan_month_min": 5500,
+  "working_days_month": 22
+}

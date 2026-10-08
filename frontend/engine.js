@@ -7,6 +7,12 @@
   const STATES = ["working", "starved", "blocked", "down", "maintenance", "no_parts"];
   const DEFECT_TYPES = { robot_weld: "weld_spot", pretreat: "surface_prep", paint_booth: "paint_run", oven: "paint_cure", trim: "trim_gap", marriage: "torque", final: "fluid_leak" };
   const SHIFT_OFFSET = 8 * 3600;
+  const DEFECT_SHOP = { weld_spot: "welding", surface_prep: "paint", paint_run: "paint", paint_cure: "paint", trim_gap: "assembly", torque: "assembly", fluid_leak: "assembly" };
+  const CAUSES = {
+    robot_weld: ["sensor_error", "servo_fault", "tip_wear"], metrology: ["sensor_error", "camera_fault"], pretreat: ["pump_fault", "sensor_error"],
+    paint_booth: ["filter_change", "atomizer_fault", "sensor_error"], oven: ["burner_fault", "sensor_error"],
+    trim: ["chain_break", "drive_fault"], marriage: ["chain_break", "drive_fault", "sensor_error"], final: ["chain_break", "drive_fault"],
+  };
 
   // seeded RNG (mulberry32) whose whole state is one integer, so a plant clones with structuredClone
   function rand(p) {
@@ -27,13 +33,14 @@
   function createPlant(cfg, seed = 7, startHour = 8, warmupH = 24) {
     const p = {
       cfg, seed: seed * 2654435761 | 0, dt: cfg.tick_seconds, t: startHour * 3600, shiftLen: cfg.shift_hours * 3600,
+      workday: (cfg.shifts_per_day || 3) * cfg.shift_hours * 3600, targets: cfg.targets || {},
       plan: cfg.plan_per_shift, stations: {}, parts: {}, supplyBlock: {}, carSeq: 0,
       producedShift: 0, producedTotal: 0, firstOk: 0, firstInspected: 0, defectsFound: {},
       completions: [], history: [], bnHist: [], events: [], minuteAcc: 0, downtimeLog: [], maintLog: [],
     };
     for (const s of cfg.stations) {
       p.stations[s.id] = {
-        id: s.id, shop: s.shop, type: s.type, cycle: s.cycle, nUnits: s.units || 1, x: s.x, y: s.y,
+        id: s.id, equip: s.equip || null, cause: null, downDay: 0, shop: s.shop, type: s.type, cycle: s.cycle, nUnits: s.units || 1, x: s.x, y: s.y,
         units: Array.from({ length: s.units || 1 }, () => ({ car: null, remaining: 0, cycle: 0 })),
         buffer: [], bufferCap: s.buffer || 4, part: s.part || null, mtbf: s.mtbf_h * 3600, mttr: s.mttr_min,
         defectRate: s.defect || 0, baseline: cfg.sensor_baseline[s.type], sink: !!s.sink,
@@ -44,6 +51,7 @@
     }
     for (const pt of cfg.parts) p.parts[pt.id] = Object.assign({}, pt, { nextDelivery: p.t + pt.delivery_every_min * 60 });
     p.shiftStart = shiftStart(p, p.t);
+    p.dayNo = workDay(p, p.t);
     for (const st of Object.values(p.stations)) {
       st.health = uniform(p, 0.45, 1.0);
       st.sinceMaint = (1 - st.health) * st.mtbf;
@@ -53,7 +61,13 @@
   }
 
   function shiftStart(p, t) { return Math.floor((t - SHIFT_OFFSET) / p.shiftLen) * p.shiftLen + SHIFT_OFFSET; }
-  function shiftNo(p) { return Math.floor((((p.t - SHIFT_OFFSET) % 86400) + 86400) % 86400 / p.shiftLen) + 1; }
+  function shiftNo(p) { return Math.floor((((p.t - SHIFT_OFFSET) % p.workday) + p.workday) % p.workday / p.shiftLen) + 1; }
+  function workDay(p, t) { return Math.floor((t - SHIFT_OFFSET) / p.workday); }
+  // plant time is working time only: map it to day number and wall-clock time
+  function calendar(p, t) {
+    const rel = t - SHIFT_OFFSET, wall = SHIFT_OFFSET + (((rel % p.workday) + p.workday) % p.workday);
+    return { t, day: Math.floor(rel / p.workday) + 1, hh: Math.floor(wall % 86400 / 3600), mm: Math.floor(wall % 3600 / 60) };
+  }
   function emit(p, kind, station, params) { p.events.push({ t: p.t, kind, station, params: params || {} }); }
   const wip = (st) => st.buffer.length + st.units.filter((u) => u.car).length;
 
@@ -79,8 +93,13 @@
     st.state = reason === "maintenance" ? "maintenance" : "down";
     st.repairLeft = minutes * 60;
     if (reason === "maintenance") p.maintLog.push({ t: p.t, station: st.id, minutes });
-    else { st.failures += 1; p.downtimeLog.push({ t: p.t, station: st.id, minutes, reason }); }
-    emit(p, "down", st.id, { reason, minutes: Math.round(minutes) });
+    else {
+      st.failures += 1;
+      const cs = CAUSES[st.type] || ["sensor_error"];
+      st.cause = cs[Math.floor(rand(p) * cs.length)];
+      p.downtimeLog.push({ t: p.t, station: st.id, minutes, reason, cause: st.cause });
+    }
+    emit(p, "down", st.id, { reason, minutes: Math.round(minutes), cause: reason === "maintenance" ? null : st.cause });
   }
   function forceFailure(p, sid, minutes) {
     const st = p.stations[sid];
@@ -112,6 +131,8 @@
       emit(p, "shift_end", null, { produced: p.producedShift, plan: p.plan });
       p.shiftStart = s; p.producedShift = 0; p.firstOk = p.firstInspected = 0; p.defectsFound = {};
       for (const st of Object.values(p.stations)) { st.tState = newTState(); st.done = st.good = st.failures = 0; st.busy = 0; }
+      const day = workDay(p, p.t);
+      if (day !== p.dayNo) { p.dayNo = day; for (const st of Object.values(p.stations)) st.downDay = 0; emit(p, "day_end", null, {}); }
     }
     p.minuteAcc += dt;
     if (p.minuteAcc >= 60) { p.minuteAcc -= 60; sampleMinute(p); }
@@ -161,7 +182,7 @@
     st.sinceMaint += dt;
     if (st.defectMult !== 1 && st.defectUntil && p.t > st.defectUntil) { st.defectMult = 1; st.defectUntil = 0; }
     if (st.state === "down" || st.state === "maintenance") {
-      st.repairLeft -= dt; st.tState[st.state] += dt; st.activePeriod += dt;
+      st.downDay += dt; st.repairLeft -= dt; st.tState[st.state] += dt; st.activePeriod += dt;
       updateSensors(p, st, 0);
       if (st.repairLeft <= 0) {
         const was = st.state;
@@ -250,6 +271,8 @@
   function kpis(p) {
     const elapsed = Math.max(p.t - p.shiftStart, 1), ptd = p.plan * elapsed / p.shiftLen;
     const sts = Object.values(p.stations);
+    const byShop = { welding: 0, paint: 0, assembly: 0 }, insp = Math.max(p.firstInspected, 1);
+    for (const [d, n] of Object.entries(p.defectsFound)) if (DEFECT_SHOP[d]) byShop[DEFECT_SHOP[d]] += n;
     return {
       produced: p.producedShift, plan: p.plan, plan_to_date: r(ptd, 1),
       attainment: ptd >= 5 ? r(p.producedShift / ptd, 3) : null,
@@ -259,7 +282,9 @@
       downtime_min: r(sts.reduce((a, s) => a + s.tState.down, 0) / 60, 1),
       maintenance_min: r(sts.reduce((a, s) => a + s.tState.maintenance, 0) / 60, 1),
       defects: Object.assign({}, p.defectsFound), rework_queue: wip(p.stations.RW), shift: shiftNo(p),
-      shift_elapsed: r(elapsed / p.shiftLen, 3),
+      shift_elapsed: r(elapsed / p.shiftLen, 3), inspected: p.firstInspected,
+      defect_rate_by_shop: Object.fromEntries(Object.entries(byShop).map(([k, v]) => [k, r(v / insp, 4)])),
+      shifts_per_day: Math.round(p.workday / p.shiftLen), targets: p.targets,
     };
   }
 
@@ -380,13 +405,15 @@
       const { kind: k, station: sid, params: pr } = e;
       if (k === "down") {
         if (pr.reason === "maintenance") openInc(im, p, "maintenance", "info", sid, { minutes: pr.minutes });
-        else openInc(im, p, "breakdown", "critical", sid, { minutes: pr.minutes });
+        else openInc(im, p, "breakdown", "critical", sid, { minutes: pr.minutes, cause: pr.cause });
         closeInc(im, p, "failure_risk", sid);
       } else if (k === "up") closeInc(im, p, pr.after === "down" ? "breakdown" : "maintenance", sid);
       else if (k === "no_parts") openInc(im, p, "no_parts", "critical", sid, { part: pr.part });
       else if (k === "delivery_missed") openInc(im, p, "delivery_missed", "warning", null, { part: pr.part });
       else if (k === "defect") im.defects.push([e.t, pr.defect, sid]);
-      else if (k === "shift_end") {
+      else if (k === "day_end") {
+        for (const inc of im.items) if ((inc.type === "downtime_near" || inc.type === "downtime_limit") && inc.status !== "closed") { inc.status = "closed"; inc.closed_t = p.t; }
+      } else if (k === "shift_end") {
         const inc = openInc(im, p, "shift_report", pr.produced >= pr.plan ? "info" : "warning", null, { produced: pr.produced, plan: pr.plan });
         inc.status = "closed"; inc.closed_t = p.t;
       }
@@ -397,6 +424,14 @@
       if (pt.stock <= 8) openInc(im, p, "low_stock", "warning", null, { part: pid, stock: pt.stock });
       else if (pt.stock >= 16) closeInc(im, p, "low_stock", null, pid);
       if (pt.stock >= 16) closeInc(im, p, "delivery_missed", null, pid);
+    }
+    // daily stoppage limit for critical equipment (organizer target: <= 60 min per day)
+    const limit = p.targets.downtime_min_day || 60;
+    for (const st of Object.values(p.stations)) {
+      if (st.id === "RW" || st.id === "L1") continue;
+      const m = st.downDay / 60;
+      if (m >= limit) { closeInc(im, p, "downtime_near", st.id); openInc(im, p, "downtime_limit", "critical", st.id, { minutes: Math.round(m), limit }); }
+      else if (m >= 0.75 * limit) openInc(im, p, "downtime_near", "warning", st.id, { minutes: Math.round(m), limit });
     }
     while (im.defects.length && im.defects[0][0] < p.t - 3600) im.defects.shift();
     const counts = {};
@@ -458,11 +493,11 @@
       for (const k in share) share[k] = r(share[k] / bh.length, 3);
       const t = p.t;
       return {
-        clock: { t, day: Math.floor(t / 86400) + 1, hh: Math.floor(t % 86400 / 3600), mm: Math.floor(t % 3600 / 60) },
+        clock: calendar(p, t),
         speed: this.speed, paused: this.paused, kpi: kpis(p),
         stations: ORDER.map((id) => {
           const st = p.stations[id];
-          return { id, shop: st.shop, type: st.type, state: st.state, x: st.x, y: st.y, units: st.units.length,
+          return { id, equip: st.equip, cause: st.state === "down" ? st.cause : null, down_day_min: Math.round(st.downDay / 60), shop: st.shop, type: st.type, state: st.state, x: st.x, y: st.y, units: st.units.length,
             busy: st.units.filter((u) => u.car).length, buffer: st.buffer.length, buffer_cap: st.bufferCap, sensors: st.sensors,
             kpi: stationKpis(st), cycle: st.cycle, down_left_min: ["down", "maintenance"].includes(st.state) ? Math.round(st.repairLeft / 60) : 0,
             ai: this.a[id] || null };

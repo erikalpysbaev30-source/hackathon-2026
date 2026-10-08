@@ -33,6 +33,20 @@ DEFECT_TYPES = {
     "marriage": "torque",
     "final": "fluid_leak",
 }
+DEFECT_SHOP = {"weld_spot": "welding", "surface_prep": "paint", "paint_run": "paint", "paint_cure": "paint",
+               "trim_gap": "assembly", "torque": "assembly", "fluid_leak": "assembly"}
+
+# Breakdown causes per equipment type (named after the organizers' downtime records).
+CAUSES = {
+    "robot_weld": ["sensor_error", "servo_fault", "tip_wear"],
+    "metrology": ["sensor_error", "camera_fault"],
+    "pretreat": ["pump_fault", "sensor_error"],
+    "paint_booth": ["filter_change", "atomizer_fault", "sensor_error"],
+    "oven": ["burner_fault", "sensor_error"],
+    "trim": ["chain_break", "drive_fault"],
+    "marriage": ["chain_break", "drive_fault", "sensor_error"],
+    "final": ["chain_break", "drive_fault"],
+}
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
@@ -80,7 +94,9 @@ class Station:
         self.state = "starved"
         self.repair_left = 0.0
         self.down_reason = None
+        self.cause = None
         self.since_maint_s = 0.0
+        self.down_day_s = 0.0  # stoppage time (breakdown + maintenance) in the current work day
         self.active_period = 0.0
         self.sensors = dict(baseline)
         self.sensor_hist: deque = deque(maxlen=60)   # one sample per sim-minute
@@ -110,6 +126,9 @@ class Plant:
         self.dt = float(self.cfg["tick_seconds"])
         self.t = start_hour * 3600.0
         self.shift_len = self.cfg["shift_hours"] * 3600.0
+        # the plant works shifts_per_day shifts from 08:00; the clock skips non-working hours
+        self.workday = self.cfg.get("shifts_per_day", 3) * self.shift_len
+        self.targets = self.cfg.get("targets", {})
         self.plan_per_shift = self.cfg["plan_per_shift"]
         self.stations: dict[str, Station] = {}
         for s in self.cfg["stations"]:
@@ -122,6 +141,7 @@ class Plant:
 
         # KPI state
         self.shift_start = self._shift_start(self.t)
+        self.day_no = self.work_day(self.t)
         self.produced_shift = 0
         self.produced_total = 0
         self.first_pass_ok = 0
@@ -153,7 +173,17 @@ class Plant:
         return math.floor((t - o) / self.shift_len) * self.shift_len + o
 
     def shift_no(self) -> int:
-        return int(((self.t - self.SHIFT_OFFSET) % 86400) // self.shift_len) + 1
+        return int(((self.t - self.SHIFT_OFFSET) % self.workday) // self.shift_len) + 1
+
+    def work_day(self, t: float) -> int:
+        return int((t - self.SHIFT_OFFSET) // self.workday)
+
+    def calendar(self, t: Optional[float] = None) -> dict:
+        """Plant time is working time only; map it to day number and wall-clock time."""
+        t = self.t if t is None else t
+        rel = t - self.SHIFT_OFFSET
+        wall = self.SHIFT_OFFSET + rel % self.workday
+        return {"t": t, "day": int(rel // self.workday) + 1, "hh": int(wall % 86400 // 3600), "mm": int(wall % 3600 // 60)}
 
     def emit(self, kind: str, station: Optional[str] = None, **params):
         self.events.append({"t": self.t, "kind": kind, "station": station, "params": params})
@@ -194,8 +224,9 @@ class Plant:
             self.maint_log.append({"t": self.t, "station": st.id, "minutes": minutes})
         else:
             st.failures += 1
-            self.downtime_log.append({"t": self.t, "station": st.id, "minutes": minutes, "reason": reason})
-        self.emit("down", st.id, reason=reason, minutes=round(minutes))
+            st.cause = self.rng.choice(CAUSES.get(st.type, ["sensor_error"]))
+            self.downtime_log.append({"t": self.t, "station": st.id, "minutes": minutes, "reason": reason, "cause": st.cause})
+        self.emit("down", st.id, reason=reason, minutes=round(minutes), cause=None if reason == "maintenance" else st.cause)
 
     def force_failure(self, sid: str, minutes: Optional[float] = None, reason: str = "breakdown"):
         st = self.stations[sid]
@@ -313,6 +344,7 @@ class Plant:
         if st.defect_mult != 1.0 and st.defect_mult_until and self.t > st.defect_mult_until:
             st.defect_mult, st.defect_mult_until = 1.0, 0.0
         if st.state in ("down", "maintenance"):
+            st.down_day_s += dt
             st.repair_left -= dt
             st.t_state[st.state] += dt
             st.active_period += dt
@@ -381,6 +413,12 @@ class Plant:
         start = self._shift_start(self.t)
         if start != self.shift_start:
             self.emit("shift_end", None, produced=self.produced_shift, plan=self.plan_per_shift)
+            day = self.work_day(self.t)
+            if day != self.day_no:
+                self.day_no = day
+                for st in self.stations.values():
+                    st.down_day_s = 0.0
+                self.emit("day_end", None)
             self.shift_start = start
             self.produced_shift = 0
             self.first_pass_ok = self.first_inspected = 0
@@ -439,6 +477,11 @@ class Plant:
         bottleneck_cycle = self.ideal_cycle()
         plan_to_date = self.plan_per_shift * elapsed / self.shift_len
         downtime = sum(s.t_state["down"] for s in self.stations.values()) / 60
+        insp = max(self.first_inspected, 1)
+        by_shop = {"welding": 0, "paint": 0, "assembly": 0}
+        for d, n in self.defects_found.items():
+            if d in DEFECT_SHOP:
+                by_shop[DEFECT_SHOP[d]] += n
         maint = sum(s.t_state["maintenance"] for s in self.stations.values()) / 60
         return {
             "produced": self.produced_shift,
@@ -453,6 +496,10 @@ class Plant:
             "downtime_min": round(downtime, 1),
             "maintenance_min": round(maint, 1),
             "defects": dict(self.defects_found),
+            "inspected": self.first_inspected,
+            "defect_rate_by_shop": {k: round(v / insp, 4) for k, v in by_shop.items()},
+            "shifts_per_day": round(self.workday / self.shift_len),
+            "targets": self.targets,
             "rework_queue": self.stations["RW"].wip(),
             "shift": self.shift_no(),
             "shift_elapsed": round(elapsed / self.shift_len, 3),

@@ -56,7 +56,7 @@ class IncidentManager:
                     self._open(plant, "maintenance", "info", sid, minutes=p["minutes"])
                     self._close(plant, "failure_risk", sid)
                 else:
-                    self._open(plant, "breakdown", "critical", sid, minutes=p["minutes"])
+                    self._open(plant, "breakdown", "critical", sid, minutes=p["minutes"], cause=p.get("cause"))
                     self._close(plant, "failure_risk", sid)
             elif k == "up":
                 self._close(plant, "breakdown" if p["after"] == "down" else "maintenance", sid)
@@ -66,6 +66,11 @@ class IncidentManager:
                 self._open(plant, "delivery_missed", "warning", None, part=p["part"])
             elif k == "defect":
                 self._defects.append((e["t"], p["defect"], sid))
+            elif k == "day_end":
+                for t in ("downtime_near", "downtime_limit"):
+                    for inc in self.items:
+                        if inc["type"] == t and inc["status"] != "closed":
+                            inc["status"], inc["closed_t"] = "closed", plant.t
             elif k == "shift_end":
                 sev = "info" if p["produced"] >= p["plan"] else "warning"
                 inc = self._open(plant, "shift_report", sev, None, produced=p["produced"], plan=p["plan"])
@@ -84,6 +89,18 @@ class IncidentManager:
                 self._close(plant, "low_stock", None, pid)
             if part["stock"] >= STOCK_OK:
                 self._close(plant, "delivery_missed", None, pid)
+
+        # daily stoppage limit for critical equipment (organizer target: <= 60 min per day)
+        limit = plant.targets.get("downtime_min_day", 60)
+        for st in plant.stations.values():
+            if st.id in ("RW", "L1"):
+                continue
+            m = st.down_day_s / 60
+            if m >= limit:
+                self._close(plant, "downtime_near", st.id)
+                self._open(plant, "downtime_limit", "critical", st.id, minutes=round(m), limit=limit)
+            elif m >= 0.75 * limit:
+                self._open(plant, "downtime_near", "warning", st.id, minutes=round(m), limit=limit)
 
         # quality spikes: 3+ defects of the same type from the same station within an hour
         while self._defects and self._defects[0][0] < plant.t - 3600:

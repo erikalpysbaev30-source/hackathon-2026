@@ -2,27 +2,28 @@
   "days_per_seed": 10.0,
   "seeds": 4,
   "reactive": {
-    "cars": 2450.25,
-    "jph": 10.209,
-    "breakdowns": 76.75,
-    "breakdown_min": 4599.005,
+    "cars": 2356.5,
+    "jph": 14.728,
+    "breakdowns": 56.75,
+    "breakdown_min": 2256.738,
     "maintenance_min": 0.0,
-    "plan_hit": 0.617
+    "plan_hit": 0.475
   },
   "predictive": {
-    "cars": 2641.75,
-    "jph": 11.007,
-    "breakdowns": 37.25,
-    "breakdown_min": 2084.161,
-    "maintenance_min": 1362.5,
-    "plan_hit": 0.883
+    "cars": 2432.25,
+    "jph": 15.202,
+    "breakdowns": 28.5,
+    "breakdown_min": 1152.452,
+    "maintenance_min": 912.5,
+    "plan_hit": 0.6
   },
   "delta": {
-    "breakdown_min_pct": -54.7,
-    "breakdowns_pct": -51.5,
-    "output_pct": 7.82,
-    "extra_cars_per_day": 19.15,
-    "plan_hit_pp": 26.6
+    "breakdown_min_pct": -48.9,
+    "breakdowns_pct": -49.8,
+    "output_pct": 3.21,
+    "extra_cars_per_day": 7.58,
+    "plan_hit_pp": 12.5
   },
-  "threshold": 0.35
+  "threshold": 0.35,
+  "shifts_per_day": 2
 }

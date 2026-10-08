@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="vendor/chart.umd.min.js"></script>
   <script src="i18n.js"></script>
+  <script src="allur_data.js"></script>
 </head>
 <body>
 <header class="top">
@@ -23,6 +24,7 @@
     <button class="tab" data-tab="exec" data-i18n="tab_exec"></button>
     <button class="tab" data-tab="incidents"><span data-i18n="tab_incidents"></span> <span id="inc-badge" class="badge hidden">0</span></button>
     <button class="tab" data-tab="ai" data-i18n="tab_ai"></button>
+    <button class="tab" data-tab="data" data-i18n="tab_data"></button>
   </nav>
   <div class="controls">
     <div class="clock"><span id="clock">--:--</span><small id="clock-sub"></small></div>
@@ -124,6 +126,31 @@
       <div class="card"><h3 data-i18n="model_card"></h3><p class="muted small" data-i18n="model_desc"></p><div id="model-metrics"></div></div>
       <div class="card span2"><h3 data-i18n="effect_title"></h3><p class="muted small" id="effect-desc"></p><div class="chart"><canvas id="c-effect"></canvas></div></div>
       <div class="card"><h3 data-i18n="calc_title"></h3><div id="calc"></div></div>
+    </div>
+  </section>
+
+  <!-- ORGANIZER DATA -->
+  <section class="view" id="view-data">
+    <div class="card">
+      <div class="card-head">
+        <h3 data-i18n="data_title"></h3>
+        <div class="filters">
+          <label class="btn primary"><span data-i18n="data_import"></span><input type="file" id="data-file" accept=".csv,text/csv" multiple hidden></label>
+          <button class="btn ghost" id="data-reset" data-i18n="data_reset"></button>
+        </div>
+      </div>
+      <p class="muted small" id="data-src" style="margin:8px 0 0"></p>
+    </div>
+    <div class="kpis targets" id="data-targets"></div>
+    <div class="grid3" style="margin-top:12px">
+      <div class="card span2"><h3 data-i18n="data_findings"></h3><ul class="feed" id="data-findings"></ul></div>
+      <div class="card"><h3 data-i18n="data_twin"></h3><div id="data-twin"></div></div>
+      <div class="card span2"><h3 data-i18n="data_lines"></h3><div class="scroll-x"><table class="table" id="data-lines"></table></div></div>
+      <div class="card"><h3 data-i18n="data_oee_chart"></h3><div class="chart"><canvas id="c-data-oee"></canvas></div></div>
+      <div class="card"><h3 data-i18n="data_quality"></h3><div class="chart"><canvas id="c-data-q"></canvas></div></div>
+      <div class="card"><h3 data-i18n="data_downtime"></h3><div class="scroll-x"><table class="table" id="data-down"></table></div></div>
+      <div class="card"><h3 data-i18n="data_plan"></h3><div class="scroll-x"><table class="table" id="data-plan"></table></div>
+        <div class="calc" style="margin-top:10px"><label><span data-i18n="data_days"></span><input type="number" id="data-days" min="1" max="31"></label></div></div>
     </div>
   </section>
 </main>

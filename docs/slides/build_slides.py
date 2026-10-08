@@ -16,21 +16,43 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 IMG = HERE / "img"
 OUT = HERE / "out"
+sys.path.insert(0, str(ROOT / "backend"))
+from app.testdata import analyze  # noqa: E402
+
 REPO = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/<username>/allur-digital-twin"
 
 M = json.loads((ROOT / "backend/models/metrics.json").read_text())
 E = json.loads((ROOT / "backend/models/effect.json").read_text())
 D = E["days_per_seed"]
 R, P = E["reactive"], E["predictive"]
-per_day = lambda x: x / D  # noqa: E731
+per_day = lambda x: x / D  # noqa: E731  (a day = the plant's 2 working shifts)
+SPD = E.get("shifts_per_day", 2)
 
 # business case assumptions (same defaults as the calculator in the app)
 DAYS, SHIFTS, MARGIN, DOWNCOST = 250, 2, 700_000, 1_500_000
-extra_cars_year = (per_day(P["cars"]) - per_day(R["cars"])) / 3 * SHIFTS * DAYS
-hours_saved_year = (per_day(R["breakdown_min"]) - per_day(P["breakdown_min"])) / 3 * SHIFTS * DAYS / 60
+extra_cars_year = (per_day(P["cars"]) - per_day(R["cars"])) / SPD * SHIFTS * DAYS
+hours_saved_year = (per_day(R["breakdown_min"]) - per_day(P["breakdown_min"])) / SPD * SHIFTS * DAYS / 60
 money_year = extra_cars_year * MARGIN + hours_saved_year * 0.5 * DOWNCOST
 
+A = analyze()
+_q = A["quality"]
+_bad_q = [r for r in _q if not r["ok"]]
+_min_oee = min(A["lines"], key=lambda r: r["oee"])
+_max_down = max(A["downtime"], key=lambda r: r["minutes"])
+ru_pct = lambda x: f"{x * 100:.1f}".replace(".", ",")  # noqa: E731
 NUM = {
+    "d_oee_min": ru_pct(_min_oee["oee"]), "d_oee_max": ru_pct(max(r["oee"] for r in A["lines"])),
+    "d_oee_line": _min_oee["line"], "d_oee_date": _min_oee["date"],
+    "d_paint": " и ".join(ru_pct(r["rate"]) + "%" for r in _q if r["area"] == "Окраска"),
+    "d_paint_ko": ", ".join(f'{r["rate"] * 100:.1f}%' for r in _q if r["area"] == "Окраска"),
+    "d_weld_bad": ", ".join(ru_pct(r["rate"]) + f'% ({r["date"]})' for r in _bad_q if r["area"] == "Сварка"),
+    "d_weld_bad_ko": ", ".join(f'{r["rate"] * 100:.1f}% ({r["date"]})' for r in _bad_q if r["area"] == "Сварка"),
+    "d_nbad": len(_bad_q), "d_nq": len(_q),
+    "d_down": f'{_max_down["minutes"]:.0f}', "d_down_eq": _max_down["equip"], "d_down_date": _max_down["date"],
+    "d_plan": f'{A["plan_total"]:,.0f}'.replace(",", " "), "d_target": f'{A["plan_target"]:,.0f}'.replace(",", " "),
+    "d_gap": f'{A["plan_gap"]:,.0f}'.replace(",", " "), "d_run": f'{A["run_rate_month"]:,.0f}'.replace(",", " "),
+    "d_need": f'{A["need_per_shift"]:.0f}', "d_per": f'{A["final_per_shift"]:.0f}', "d_days": A["targets"]["working_days_month"],
+
     "auc": f'{M["roc_auc"]:.2f}', "lift": f'{M["lift_top10"]:.1f}', "recall": f'{M["recall_top10"] * 100:.0f}',
     "samples": f'{M["samples"]:,}'.replace(",", " "),
     "bd_pct": f'{-E["delta"]["breakdown_min_pct"]:.0f}', "out_pct": f'{E["delta"]["output_pct"]:.1f}',
@@ -75,6 +97,7 @@ T = {
             ("Инциденты и отклонения", "Автоматические инциденты: аварии, нехватка комплектующих, рост брака, риск срыва плана"),
             ("Панель руководителя", "Выпуск vs план, потери по участкам, Парето дефектов, узкие места, склад"),
             ("Прогноз простоев и узких мест (ИИ)", "Индекс здоровья, риск отказа на 4 ч, Монте-Карло прогноз смены, рекомендации ТО"),
+            ("Тестовые данные АЛЛЮР", "Вкладка «Данные АЛЛЮР»: OEE, брак, простои и план проверяются по целевым показателям; модель линии откалибрована по этим данным, свои CSV загружаются кнопкой"),
         ],
         # architecture
         "a_title": "Архитектура решения",
@@ -103,11 +126,23 @@ T = {
         ],
         "ai_metrics": "Качество модели (отложенная выборка)",
         "ai_m": [("ROC-AUC", "{auc}"), ("Точность топ-10% риска выше случайной", "×{lift}"), ("Отказов, пойманных в топ-10%", "{recall}%"), ("Обучающих примеров", "{samples}")],
-        "ai_note": "Модели обучены на синтетической истории симулятора. На реальных данных АЛЛЮР (журналы простоев, ТОиР, датчики) тот же конвейер переобучается без изменения кода.",
+        "ai_note": "Модели обучены на истории двойника, откалиброванного по тестовым данным АЛЛЮР (120 авто/смену, 2 смены, брак по участкам, оборудование ABB, камеры, конвейеры). На полной истории АЛЛЮР (журналы простоев, ТОиР, датчики) тот же конвейер переобучается без изменения кода.",
+        # organizer data
+        "d_title": "Тестовые данные АЛЛЮР: что показал двойник",
+        "d_lead": "Загрузили таблицы организаторов (01–02.10.2026) и проверили их по целевым показателям кейса",
+        "d_cards": [("{d_oee_min}%", "минимальный OEE линии, норма ≥ 85% выполнена"), ("{d_nbad} из {d_nq}", "замеров брака выше нормы 2%"),
+                    ("{d_down} мин", "простой {d_down_eq} при лимите 60 мин"), ("{d_plan}", "план по моделям при цели {d_target}")],
+        "d_items": [
+            "<b>Качество — главный резерв.</b> Окраска: брак {d_paint} при норме 2%; сварка: {d_weld_bad}. Двойник показывает рост брака в окрасочной камере и участок-источник.",
+            "<b>OEE в норме:</b> от {d_oee_min}% до {d_oee_max}%. Ближе всего к границе {d_oee_line} {d_oee_date}.",
+            "<b>Простои:</b> {d_down_eq} простоял {d_down} мин ({d_down_date}) — 92% суточного лимита. Двойник предупреждает при 45 мин, а ИИ заранее видит риск отказа.",
+            "<b>План не сходится:</b> по моделям {d_plan} авто, на {d_gap} меньше цели {d_target}. Темп {d_per} авто/смену × 2 смены × {d_days} дня = {d_run}; для цели нужно {d_need} авто за смену.",
+            "<b>Данные расходятся:</b> в 3 из 6 записей время работы линии не совпадает с журналом простоев. Двойник сводит источники в одну картину.",
+        ],
         # scenarios
         "sc_title": "Демонстрационные сценарии", "sc_h": ("Сценарий", "Что видит руководитель", "Что предлагает двойник"),
         "sc_rows": [
-            ("Авария робота W3", "Участок красный, инцидент «авария», перед W3 копятся кузова, падает темп", "Прогноз потерь на смену, новое узкое место, вероятность плана"),
+            ("Авария робота W3", "Участок красный, инцидент «авария» с причиной, перед W3 копятся кузова; через 60 мин — «превышен лимит простоя»", "Прогноз потерь на смену, новое узкое место, вероятность плана"),
             ("Задержка поставки двигателей", "Падает запас, инцидент «срыв поставки», затем A2 «нет комплектующих»", "Предупреждение заранее, когда склад ещё не пуст"),
             ("Брак в окрасочной камере", "Растёт доработка, падает FPY, Парето дефектов показывает «подтёки ЛКП»", "Инцидент «рост брака» с участком-источником"),
             ("Скрытый износ узла A2", "Участок ещё работает, но растут вибрация и температура", "Риск отказа ↑, рекомендация «ТО сейчас» с расчётом эффекта"),
@@ -162,6 +197,7 @@ T = {
             ("이상 및 사고 표시", "고장, 부품 부족, 불량 증가, 계획 미달 위험을 자동으로 감지"),
             ("경영진 대시보드", "생산 대비 계획, 공정별 손실, 불량 파레토, 병목, 재고"),
             ("비가동·병목 예측 (AI)", "설비 건강 지수, 4시간 고장 위험, 몬테카를로 교대 예측, 정비 권고"),
+            ("ALLUR 테스트 데이터", "'ALLUR 데이터' 탭: OEE, 불량, 정지, 계획을 목표 지표로 점검하고, 라인 모델을 이 데이터로 보정, CSV 업로드 지원"),
         ],
         "a_title": "솔루션 아키텍처",
         "a_src": "데이터 소스", "a_src_items": ["MES / 1C: 계획, 실적", "SCADA / PLC (OPC UA)", "IoT 센서 (MQTT)", "설비보전(CMMS)", "창고 (WMS)"],
@@ -186,10 +222,21 @@ T = {
         ],
         "ai_metrics": "모델 성능 (검증 데이터)",
         "ai_m": [("ROC-AUC", "{auc}"), ("상위 10% 위험 정밀도 (무작위 대비)", "×{lift}"), ("상위 10%에서 포착한 고장", "{recall}%"), ("학습 샘플 수", "{samples}")],
-        "ai_note": "모델은 시뮬레이터의 합성 이력으로 학습했습니다. ALLUR 실제 데이터(비가동 기록, 정비 이력, 센서)로 코드 변경 없이 같은 파이프라인에서 재학습합니다.",
+        "ai_note": "모델은 ALLUR 테스트 데이터로 보정한 트윈의 이력으로 학습했습니다 (교대당 120대, 2교대, 공정별 불량률, ABB 로봇·도장 부스·컨베이어). ALLUR 전체 이력(비가동 기록, 정비 이력, 센서)으로 코드 변경 없이 같은 파이프라인에서 재학습합니다.",
+        "d_title": "ALLUR 테스트 데이터: 트윈 분석 결과",
+        "d_lead": "주최 측 표(2026.10.01–02)를 불러와 케이스 목표 지표로 점검했습니다",
+        "d_cards": [("{d_oee_min}%", "라인 최저 OEE, 기준 ≥ 85% 충족"), ("{d_nbad}/{d_nq}", "불량률 기준 2% 초과 건수"),
+                    ("{d_down}분", "{d_down_eq} 정지, 한도 60분"), ("{d_plan}", "모델별 계획 합계, 목표 {d_target}")],
+        "d_items": [
+            "<b>품질이 핵심 개선 영역.</b> 도장 불량률 {d_paint_ko} (기준 2%), 용접 {d_weld_bad_ko}. 트윈은 도장 부스의 불량 증가와 발생 공정을 보여 줍니다.",
+            "<b>OEE 기준 충족:</b> {d_oee_min}%–{d_oee_max}%. 경계에 가장 가까운 것은 {d_oee_line} {d_oee_date}.",
+            "<b>정지:</b> {d_down_eq} {d_down}분 정지 ({d_down_date}) — 일일 한도의 92%. 트윈은 45분에서 경고하고, AI는 고장 위험을 미리 감지합니다.",
+            "<b>계획 불일치:</b> 모델별 합계 {d_plan}대로 목표 {d_target}대보다 {d_gap}대 적습니다. 교대당 {d_per}대 × 2교대 × {d_days}일 = {d_run}대; 목표에는 교대당 {d_need}대가 필요합니다.",
+            "<b>데이터 불일치:</b> 6건 중 3건에서 라인 가동 시간과 정지 기록이 맞지 않습니다. 트윈은 출처를 하나로 통합합니다.",
+        ],
         "sc_title": "데모 시나리오", "sc_h": ("시나리오", "경영진이 보는 것", "트윈의 제안"),
         "sc_rows": [
-            ("W3 로봇 고장", "공정이 빨간색, '고장' 사고, W3 앞에 차체 적체, JPH 하락", "교대 손실 예측, 새 병목, 계획 달성 확률"),
+            ("W3 로봇 고장", "공정이 빨간색, 원인이 표시된 '고장' 사고, W3 앞에 차체 적체; 60분 후 '정지 한도 초과'", "교대 손실 예측, 새 병목, 계획 달성 확률"),
             ("엔진 납품 지연", "재고 감소, '납품 지연' 사고, 이후 A2 '부품 부족'", "창고가 비기 전에 사전 경고"),
             ("도장 부스 품질 이상", "수정 작업 증가, 직행률 하락, 파레토에 '도장 흘림'", "발생 공정이 표시된 '불량 증가' 사고"),
             ("A2 설비 숨은 마모", "공정은 가동 중이지만 진동과 온도가 상승", "고장 위험 ↑, 효과 계산과 함께 '즉시 정비' 권고"),
@@ -332,6 +379,13 @@ def build(lang: str) -> str:
         <div class="arch">{"".join(f'<div class="col" style="background:{c}"><h4>{t[k]}</h4>' + "".join(f"<div>{i}</div>" for i in t[k + "_items"]) + "</div>" for k, c in cols)}</div>
         <div class="flow">{"".join(f"<div><b>{i + 1}</b>{x}</div>" for i, x in enumerate(t["a_flow"]))}</div>
         <div class="stack">{t["a_stack"]}</div>{foot}''')
+
+    add(f'''<div class="bar"></div><h2>{t["d_title"]}</h2><p class="lead">{t["d_lead"]}</p>
+        <div class="kpis">{"".join(f"<div class='kpi'><b>{fmt(a)}</b><span>{fmt(b)}</span></div>" for a, b in t["d_cards"])}</div>
+        <div style="display:grid;grid-template-columns:1fr 520px;gap:22px">
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.5;color:#2b3a55">{"".join(f'<li style="margin-bottom:8px">{fmt(x)}</li>' for x in t["d_items"])}</ul>
+          <img src="{img(f"data_{lang}.png")}" style="width:520px;border-radius:12px;border:1px solid #d6dfec;box-shadow:0 8px 30px rgba(11,31,58,.18)">
+        </div>{foot}''')
 
     for key, shot in (("v1", "plant"), ("v2", "exec"), ("v3", "incidents")):
         add(f'''<div class="bar"></div><h2>{t[key + "_title"]}</h2><p class="lead"></p>
