@@ -278,7 +278,15 @@ def img(name: str) -> str:
     p = IMG / name
     if not p.exists():
         return ""
-    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
+    try:  # JPEG keeps the PDF small enough to attach to an email
+        from PIL import Image
+        im = Image.open(p).convert("RGB")
+        im.thumbnail((1400, 1400))
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=78, optimize=True)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    except ImportError:
+        return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
 
 
 def qr_data(url: str) -> str:
